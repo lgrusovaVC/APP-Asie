@@ -15,8 +15,8 @@ const CONFIG = {
   TRIP_TITLE: 'Korea & Japonsko',
   TRIP_YEAR: '2026',
   TRIP_SUBTITLE: 'Dream Asia Trip 2026 ✈️',
-  DEPARTURE_DATE: '2026-09-01',   // 2026-09-04
-  RETURN_DATE:    '2026-09-21',   // 2026-09-27
+  DEPARTURE_DATE: '2026-09-04',   // 2026-09-04
+  RETURN_DATE:    '2026-09-27',   // 2026-09-27
 
   // ── Rozpočet ────────────────────────────────────────────────
   TOTAL_BUDGET_CZK: 200000,

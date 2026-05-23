@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Korea &amp; Japonsko ✈️</title>
   <meta name="description" content="Plánování cesty po Koreji a Japonsku">
-  <meta name="theme-color" content="#f472b6">
+  <meta name="theme-color" content="#cf3a2a">
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..500&family=DM+Sans:opsz,wght@9..40,300..700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/tabler-icons.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -19,43 +19,47 @@
        LOGIN SCREEN
   ═══════════════════════════════════════════════════════ -->
   <div id="login-screen" class="login-screen">
-    <div class="login-bg">
-      <div class="login-blob login-blob-1"></div>
-      <div class="login-blob login-blob-2"></div>
-      <div class="login-blob login-blob-3"></div>
-    </div>
-    <div class="login-card">
-      <div class="login-header">
-        <div class="login-emoji">✈️</div>
-        <h1>Korea &amp; Japonsko</h1>
-        <p>Přihlaste se pro přístup k plánování</p>
+    <div class="login-split-left">
+      <div class="login-split-bg"></div>
+      <div class="login-split-overlay">
+        <div class="login-split-quote">
+          <div class="login-split-eyebrow">Korea &amp; Japonsko · 2026</div>
+          <div class="login-split-heading">Tři týdny mezi mořem a&nbsp;horami.</div>
+        </div>
       </div>
-      <form id="login-form" class="login-form" novalidate>
-        <div class="form-group">
-          <label for="login-email">E-mail</label>
-          <div class="input-wrapper">
-            <i class="ti ti-mail input-icon"></i>
-            <input type="email" id="login-email" name="email"
-                   placeholder="váš@email.cz" required autocomplete="email">
+    </div>
+    <div class="login-split-right">
+      <div class="login-card">
+        <div class="login-logo">✈️</div>
+        <h1 class="login-title">Přihlásit se</h1>
+        <p class="login-sub">Přístup k plánování cesty</p>
+        <form id="login-form" class="login-form" novalidate>
+          <div class="form-group">
+            <label for="login-email">E-mail</label>
+            <div class="input-wrapper">
+              <i class="ti ti-mail input-icon"></i>
+              <input type="email" id="login-email" name="email"
+                     placeholder="váš@email.cz" required autocomplete="email">
+            </div>
           </div>
-        </div>
-        <div class="form-group">
-          <label for="login-password">Heslo</label>
-          <div class="input-wrapper">
-            <i class="ti ti-lock input-icon"></i>
-            <input type="password" id="login-password" name="password"
-                   placeholder="••••••••" required autocomplete="current-password">
-            <button type="button" class="btn-toggle-pass" id="toggle-pass-btn" title="Zobrazit heslo">
-              <i class="ti ti-eye" id="eye-icon"></i>
-            </button>
+          <div class="form-group">
+            <label for="login-password">Heslo</label>
+            <div class="input-wrapper">
+              <i class="ti ti-lock input-icon"></i>
+              <input type="password" id="login-password" name="password"
+                     placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" class="btn-toggle-pass" id="toggle-pass-btn">
+                <i class="ti ti-eye" id="eye-icon"></i>
+              </button>
+            </div>
           </div>
-        </div>
-        <div id="login-error" class="login-error" style="display:none"></div>
-        <button type="submit" class="btn btn-primary btn-full" id="login-btn">
-          <span id="login-btn-text">Přihlásit se</span>
-          <i class="ti ti-arrow-right"></i>
-        </button>
-      </form>
+          <div id="login-error" class="login-error" style="display:none"></div>
+          <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+            <span id="login-btn-text">Přihlásit se</span>
+            <i class="ti ti-arrow-right"></i>
+          </button>
+        </form>
+      </div>
     </div>
   </div>
 
@@ -67,34 +71,34 @@
     <!-- Sidebar (desktop) -->
     <nav class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <span class="sidebar-emoji">✈️</span>
-        <div>
-          <div class="sidebar-title" id="sidebar-trip-title">Korea &amp; Japonsko</div>
-          <div class="sidebar-year" id="sidebar-trip-year">2026</div>
+        <div class="sidebar-topline">
+          <span class="sidebar-num-label">№ 01 · Atlas</span>
+          <span class="sidebar-seal">朱</span>
         </div>
+        <div class="sidebar-title" id="sidebar-trip-title">Korea &amp; Japonsko</div>
+        <div class="sidebar-dates" id="sidebar-trip-dates">IX — X · MMXXVI</div>
       </div>
-
       <ul class="sidebar-nav" id="sidebar-nav">
         <li><a class="nav-item active" data-section="dashboard">
-          <i class="ti ti-layout-dashboard"></i><span>Přehled</span>
+          <span class="nav-num">01</span><span class="nav-text">Přehled</span><span class="nav-bullet">●</span>
         </a></li>
         <li><a class="nav-item" data-section="flights">
-          <i class="ti ti-plane"></i><span>Letenky</span>
+          <span class="nav-num">02</span><span class="nav-text">Letenky</span><span class="nav-bullet">●</span>
         </a></li>
         <li><a class="nav-item" data-section="accommodations">
-          <i class="ti ti-bed"></i><span>Ubytování</span>
+          <span class="nav-num">03</span><span class="nav-text">Ubytování</span><span class="nav-bullet">●</span>
         </a></li>
         <li><a class="nav-item" data-section="activities">
-          <i class="ti ti-map-pin"></i><span>Výlety</span>
+          <span class="nav-num">04</span><span class="nav-text">Místa</span><span class="nav-bullet">●</span>
         </a></li>
         <li><a class="nav-item" data-section="restaurants">
-          <i class="ti ti-utensils"></i><span>Restaurace</span>
+          <span class="nav-num">05</span><span class="nav-text">Restaurace</span><span class="nav-bullet">●</span>
         </a></li>
         <li><a class="nav-item" data-section="transport">
-          <i class="ti ti-train"></i><span>Jízdní řády</span>
+          <span class="nav-num">06</span><span class="nav-text">Jízdní řády</span><span class="nav-bullet">●</span>
         </a></li>
         <li><a class="nav-item" data-section="budget">
-          <i class="ti ti-wallet"></i><span>Rozpočet</span>
+          <span class="nav-num">07</span><span class="nav-text">Rozpočet</span><span class="nav-bullet">●</span>
         </a></li>
       </ul>
 
@@ -110,146 +114,53 @@
 
       <!-- Mobile Top Bar -->
       <header class="topbar" id="topbar">
-        <span class="topbar-emoji">✈️</span>
+        <span class="topbar-flags">🇰🇷🇯🇵</span>
         <h2 class="topbar-title" id="topbar-title">Přehled</h2>
         <button id="logout-btn-topbar" class="btn-icon-sm topbar-logout" title="Odhlásit se">
           <i class="ti ti-logout"></i>
         </button>
       </header>
 
-      <!-- ── Dashboard ── -->
-      <section id="section-dashboard" class="section active">
-        <div id="dashboard-content"></div>
-      </section>
-
-      <!-- ── Letenky ── -->
-      <section id="section-flights" class="section">
-        <div class="section-header">
-          <h2 class="section-title"><i class="ti ti-plane"></i> Letenky &amp; transfery</h2>
-          <button class="btn btn-primary btn-add" id="add-flights-btn" data-add="flights">
-            <i class="ti ti-plus"></i> Přidat
-          </button>
-        </div>
-        <div id="flights-content" class="cards-grid"></div>
-      </section>
-
-      <!-- ── Ubytování ── -->
-      <section id="section-accommodations" class="section">
-        <div class="section-header">
-          <h2 class="section-title"><i class="ti ti-bed"></i> Ubytování</h2>
-          <button class="btn btn-primary btn-add" id="add-accommodations-btn" data-add="accommodations">
-            <i class="ti ti-plus"></i> Přidat
-          </button>
-        </div>
-        <div id="accommodations-content" class="cards-grid"></div>
-      </section>
-
-      <!-- ── Aktivity ── -->
-      <section id="section-activities" class="section">
-        <div class="section-header">
-          <h2 class="section-title"><i class="ti ti-map-pin"></i> Výlety &amp; aktivity</h2>
-          <button class="btn btn-primary btn-add" id="add-activities-btn" data-add="activities">
-            <i class="ti ti-plus"></i> Přidat
-          </button>
-        </div>
-        <div class="filter-bar" id="activities-filter">
-          <button class="filter-btn active" data-filter="all">Vše</button>
-          <button class="filter-btn" data-filter="naplánováno">Naplánováno</button>
-          <button class="filter-btn" data-filter="rezervováno">Rezervováno</button>
-          <button class="filter-btn" data-filter="hotovo">Hotovo</button>
-        </div>
-        <div id="activities-content" class="cards-grid"></div>
-      </section>
-
-      <!-- ── Restaurace ── -->
-      <section id="section-restaurants" class="section">
-        <div class="section-header">
-          <h2 class="section-title"><i class="ti ti-utensils"></i> Restaurace &amp; jídlo</h2>
-          <button class="btn btn-primary btn-add" id="add-restaurants-btn" data-add="restaurants">
-            <i class="ti ti-plus"></i> Přidat
-          </button>
-        </div>
-        <div class="filter-bar" id="restaurants-filter">
-          <button class="filter-btn active" data-filter="all">Vše</button>
-          <button class="filter-btn" data-filter="Korea">🇰🇷 Korea</button>
-          <button class="filter-btn" data-filter="Japonsko">🇯🇵 Japonsko</button>
-        </div>
-        <div id="restaurants-content" class="cards-grid"></div>
-      </section>
-
-      <!-- ── Doprava ── -->
-      <section id="section-transport" class="section">
-        <div class="section-header">
-          <h2 class="section-title"><i class="ti ti-train"></i> Jízdní řády</h2>
-          <button class="btn btn-primary btn-add" id="add-transport-btn" data-add="transport">
-            <i class="ti ti-plus"></i> Přidat
-          </button>
-        </div>
-        <div id="transport-content" class="cards-grid"></div>
-      </section>
-
-      <!-- ── Rozpočet ── -->
-      <section id="section-budget" class="section">
-        <div class="section-header">
-          <h2 class="section-title"><i class="ti ti-wallet"></i> Rozpočet</h2>
-          <button class="btn btn-primary btn-add" id="add-expenses-btn" data-add="expenses">
-            <i class="ti ti-plus"></i> Přidat výdaj
-          </button>
-        </div>
-        <div id="budget-content"></div>
-      </section>
+      <!-- Sections — content rendered by JS -->
+      <section id="section-dashboard"      class="section active"><div id="dashboard-content"></div></section>
+      <section id="section-flights"        class="section"><div id="flights-content"></div></section>
+      <section id="section-accommodations" class="section"><div id="accommodations-content"></div></section>
+      <section id="section-activities"     class="section"><div id="activities-content"></div></section>
+      <section id="section-restaurants"    class="section"><div id="restaurants-content"></div></section>
+      <section id="section-transport"      class="section"><div id="transport-content"></div></section>
+      <section id="section-budget"         class="section"><div id="budget-content"></div></section>
 
     </main>
 
     <!-- Bottom Navigation (mobile) -->
     <nav class="bottom-nav" id="bottom-nav">
-      <a class="bnav-item active" data-section="dashboard">
-        <i class="ti ti-layout-dashboard"></i><span>Přehled</span>
-      </a>
-      <a class="bnav-item" data-section="flights">
-        <i class="ti ti-plane"></i><span>Letenky</span>
-      </a>
-      <a class="bnav-item" data-section="accommodations">
-        <i class="ti ti-bed"></i><span>Hotel</span>
-      </a>
-      <a class="bnav-item" data-section="activities">
-        <i class="ti ti-map-pin"></i><span>Výlety</span>
-      </a>
-      <a class="bnav-item" data-section="restaurants">
-        <i class="ti ti-utensils"></i><span>Jídlo</span>
-      </a>
-      <a class="bnav-item" data-section="transport">
-        <i class="ti ti-train"></i><span>Doprava</span>
-      </a>
-      <a class="bnav-item" data-section="budget">
-        <i class="ti ti-wallet"></i><span>Rozpočet</span>
-      </a>
+      <a class="bnav-item active" data-section="dashboard"><i class="ti ti-layout-dashboard"></i><span>Přehled</span></a>
+      <a class="bnav-item" data-section="flights"><i class="ti ti-plane"></i><span>Letenky</span></a>
+      <a class="bnav-item" data-section="accommodations"><i class="ti ti-bed"></i><span>Hotel</span></a>
+      <a class="bnav-item" data-section="activities"><i class="ti ti-map-pin"></i><span>Výlety</span></a>
+      <a class="bnav-item" data-section="restaurants"><i class="ti ti-utensils"></i><span>Jídlo</span></a>
+      <a class="bnav-item" data-section="transport"><i class="ti ti-train"></i><span>Doprava</span></a>
+      <a class="bnav-item" data-section="budget"><i class="ti ti-wallet"></i><span>Rozpočet</span></a>
     </nav>
 
-  </div><!-- /app -->
+  </div>
 
-  <!-- ═══════════════════════════════════════════════════════
-       MODAL — přidat / editovat
-  ═══════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════ MODAL ══ -->
   <div id="modal-overlay" class="modal-overlay" style="display:none" role="dialog" aria-modal="true">
     <div class="modal" id="modal">
       <div class="modal-header">
         <h3 id="modal-title">Přidat záznam</h3>
-        <button class="btn-icon" id="modal-close-btn" title="Zavřít"><i class="ti ti-x"></i></button>
+        <button class="btn-icon" id="modal-close-btn"><i class="ti ti-x"></i></button>
       </div>
       <div class="modal-body" id="modal-body"></div>
       <div class="modal-footer">
         <button class="btn btn-ghost" id="modal-cancel-btn">Zrušit</button>
-        <button class="btn btn-primary" id="modal-save-btn">
-          <i class="ti ti-check"></i> Uložit
-        </button>
+        <button class="btn btn-primary" id="modal-save-btn"><i class="ti ti-check"></i> Uložit</button>
       </div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════
-       CONFIRM DELETE DIALOG
-  ═══════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════ CONFIRM ══ -->
   <div id="confirm-overlay" class="modal-overlay" style="display:none" role="alertdialog">
     <div class="modal confirm-modal">
       <div class="confirm-icon"><i class="ti ti-alert-triangle"></i></div>
@@ -257,27 +168,19 @@
       <p>Tuto akci nelze vrátit zpět.</p>
       <div class="confirm-actions">
         <button class="btn btn-ghost" id="confirm-cancel-btn">Zrušit</button>
-        <button class="btn btn-danger" id="confirm-ok-btn">
-          <i class="ti ti-trash"></i> Smazat
-        </button>
+        <button class="btn btn-danger" id="confirm-ok-btn"><i class="ti ti-trash"></i> Smazat</button>
       </div>
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════
-       OFFLINE BANNER
-  ═══════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════ OFFLINE ══ -->
   <div id="offline-banner" class="offline-banner" style="display:none">
-    <i class="ti ti-wifi-off"></i>
-    Offline režim — zobrazena data z posledního připojení
+    <i class="ti ti-wifi-off"></i> Offline režim — zobrazena data z posledního připojení
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════
-       TOAST NOTIFICATIONS
-  ═══════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════ TOAST ══ -->
   <div id="toast-container" class="toast-container"></div>
 
-  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
