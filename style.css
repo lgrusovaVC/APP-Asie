@@ -52,7 +52,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   color: var(--ink);
-  background: var(--bg);
+  background: #6b6066;
   overflow-x: hidden;
 }
 a { text-decoration: none; color: inherit; }
@@ -193,6 +193,8 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   grid-template-columns: var(--sidebar-w) 1fr;
   height: 100dvh;
   overflow: hidden;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 .main-content {
   grid-column: 2;

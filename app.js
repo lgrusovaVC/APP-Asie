@@ -36,11 +36,17 @@ const ITINERARY = [
 ];
 
 const TRIP_PHOTOS = [
+  { src: 'assets/Busan-beach.jpg', caption: 'Busan - pláž' }
+  { src: 'assets/Nara-Japonsko.jpg', caption: 'Nara' }
+  { src: 'assets/Busan-cable-car.jpg', caption: 'Busan - cable car' }
+  { src: 'assets/Kyoto-zlaty-pavilon.jpg', caption: 'Kyoto - Zlatý pavilon' }
+  { src: 'assets/Busan-Gamcheon.jpg', caption: 'Busan - Gamcheon' }
+  { src: 'assets/Hiroshima-pamatnik.jpg', caption: 'Hiroshima - památník' }
+  { src: 'assets/Tokyo-Shibuya.jpg', caption: 'Tokyo - Shibuya' }
   { id: '1517154421773-0529f29ea451', caption: 'Seoul'   },
   { id: '1601295864265-8e8569e2c2e3', caption: 'Busan'   },
   { id: '1591814468924-caf88d1232e1', caption: 'Fukuoka' },
   { id: '1493997181344-712f2f19d87a', caption: 'Kyoto'   },
-  { id: '1545569341-9eb8b30979d9',   caption: 'Hakone'  },
   { id: '1542051841857-5f90071e7989', caption: 'Tokyo'   },
 ];
 
