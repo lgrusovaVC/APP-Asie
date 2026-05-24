@@ -464,8 +464,8 @@ function updatePhotoButtons() {
   const prevBtn = document.getElementById('photo-prev-btn');
   const nextBtn = document.getElementById('photo-next-btn');
   if (!prevBtn || !nextBtn) return;
-  const maxIdx = Math.max(0, TRIP_PHOTOS.length - 3);
-  const showArrows = TRIP_PHOTOS.length > 3;
+  const maxIdx = Math.max(0, TRIP_PHOTOS.length - 4);
+  const showArrows = TRIP_PHOTOS.length > 4;
   prevBtn.style.display = showArrows ? '' : 'none';
   nextBtn.style.display = showArrows ? '' : 'none';
   prevBtn.style.opacity = photoCurrent === 0 ? '0.3' : '1';
@@ -476,7 +476,7 @@ function photoNav(dir) {
   const strip = document.getElementById('photos-strip');
   if (!strip) return;
   const gap = 8;
-  const visCount = 3;
+  const visCount = 4;
   const maxIdx = Math.max(0, TRIP_PHOTOS.length - visCount);
   photoCurrent = Math.max(0, Math.min(photoCurrent + dir, maxIdx));
   const itemW = Math.floor((strip.parentElement.offsetWidth - gap * (visCount - 1)) / visCount);

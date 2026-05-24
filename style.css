@@ -533,7 +533,8 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   will-change: transform;
 }
 .dash-photo-item {
-  flex: 0 0 calc((100cqi - 16px) / 3); min-height: 80px;
+  flex: 0 0 calc((100cqi - 24px) / 4);
+  aspect-ratio: 3 / 4;
   position: relative;
   background-size: cover; background-position: center;
   background-color: var(--alt); overflow: hidden;
