@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir \"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\")"
+      "Bash(dir \"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\")",
+      "WebSearch",
+      "WebFetch(domain:unsplash.com)"
     ]
   }
 }
