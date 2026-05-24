@@ -3,7 +3,8 @@
     "allow": [
       "Bash(dir \"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\")",
       "WebSearch",
-      "WebFetch(domain:unsplash.com)"
+      "WebFetch(domain:unsplash.com)",
+      "Bash(node --check app.js)"
     ]
   }
 }
