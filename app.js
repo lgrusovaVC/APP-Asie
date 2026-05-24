@@ -221,8 +221,8 @@ function tripMapSVG() {
       <circle r="8"    fill="#cf3a2a"/>
       <text x="${c.lblDx}" y="${c.lblDy}"
             text-anchor="${c.anchor}"
-            font-family="'DM Sans',sans-serif"
-            font-size="28" font-weight="500" fill="#1c1815"
+            font-family="'Instrument Serif','Newsreader',Georgia,serif"
+            font-size="32" font-weight="500" fill="#1c1815"
             style="paint-order:stroke;stroke:#f1ead9;stroke-width:4"
       >${c.name}</text>
     </g>`).join('');
@@ -322,8 +322,8 @@ async function loadDashboard() {
     </div>`;
   }).join('');
 
-  // Itinerary — city bold + dash + tag italic, dates on own line, nights right
-  const itineraryHtml = ITINERARY.map((item, i) => {
+  // Itinerary — first 5 items only (matches design spec), "VŠE →" leads to full list
+  const itineraryHtml = ITINERARY.slice(0, 5).map((item, i) => {
     const n = item.nights;
     const nightsLabel = n === 1 ? '1 noc' : n < 5 ? `${n} noci` : `${n} nocí`;
     return `<div class="itinerary-item">

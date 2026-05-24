@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Spire -->
+  <line x1="16" y1="1" x2="16" y2="5" stroke="#1c1815" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Tier 1 roof — upturned corners -->
+  <polygon points="16,5  19.5,9  21.5,7.5  21,11  11,11  10.5,7.5  12.5,9" fill="#cf3a2a"/>
+
+  <!-- Tier 1 body -->
+  <rect x="13" y="11" width="6" height="3" fill="#1c1815"/>
+
+  <!-- Tier 2 roof — upturned corners -->
+  <polygon points="16,14  23.5,19  26,17  25.5,21  6.5,21  6,17  8.5,19" fill="#cf3a2a"/>
+
+  <!-- Tier 2 body -->
+  <rect x="11" y="21" width="10" height="3" fill="#1c1815"/>
+
+  <!-- Tier 3 roof — upturned corners -->
+  <polygon points="16,24  27.5,29  30,27  29.5,31  2.5,31  2,27  4.5,29" fill="#cf3a2a"/>
+
+  <!-- Tier 3 body -->
+  <rect x="9" y="31" width="14" height="1" fill="#1c1815"/>
+</svg>

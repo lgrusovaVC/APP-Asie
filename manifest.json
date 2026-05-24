@@ -5,11 +5,11 @@
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "theme_color": "#f472b6",
-  "background_color": "#fff9fc",
+  "theme_color": "#cf3a2a",
+  "background_color": "#faf6ee",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>",
+      "src": "favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml"
     }
