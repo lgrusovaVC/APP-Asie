@@ -26,13 +26,12 @@ const CAT_ICONS = { 'Letenky':'✈️','Ubytování':'🏨','Aktivity':'🗺️'
 const CAT_COLORS = { 'Letenky':'#C73A1A','Ubytování':'#1A55A0','Aktivity':'#2A7A3A','Jídlo':'#8A6200','Doprava':'#6B3FA0','Ostatní':'#7A7268' };
 
 const ITINERARY = [
-  { d1: 'Pá 4. 9.',  d2: 'Po 7. 9.',   nights: 3, city: 'Seoul',    country: 'Korea',    tag: 'Příjezd · Jongno'    },
-  { d1: 'Po 7. 9.',  d2: 'Čt 10. 9.',  nights: 3, city: 'Seoul',    country: 'Korea',    tag: 'DMZ · Hongdae'       },
-  { d1: 'Čt 10. 9.', d2: 'Ne 13. 9.',  nights: 3, city: 'Busan',    country: 'Korea',    tag: 'Pobřeží'             },
-  { d1: 'Ne 13. 9.', d2: 'Po 14. 9.',  nights: 1, city: 'Fukuoka',  country: 'Japonsko', tag: 'Trajekt · Ramen yatai'},
-  { d1: 'Po 14. 9.', d2: 'Pá 18. 9.',  nights: 4, city: 'Kyoto',    country: 'Japonsko', tag: 'Chrámy · Higashiyama'},
-  { d1: 'Pá 18. 9.', d2: 'Ne 20. 9.',  nights: 2, city: 'Hakone',   country: 'Japonsko', tag: 'Onsen · Ryokan'      },
-  { d1: 'Ne 20. 9.', d2: 'Ne 27. 9.',  nights: 7, city: 'Tokyo',    country: 'Japonsko', tag: 'Finále · Shibuya'    },
+  { d1: 'So 5.9.',  d2: 'St 9.9.',   nights: 4, city: 'Seoul',    country: 'Korea',    tag: 'budha, Sogeumsan bridge'    },
+  { d1: 'St 9.9.',  d2: 'Čt 10.9.',  nights: 1, city: 'Gyeongju',    country: 'Korea',    tag: 'Bulguksa temple'       },
+  { d1: 'Čt 10.9.', d2: 'Po 14.9.',  nights: 4, city: 'Busan',    country: 'Korea',    tag: 'cable car, Gamcheon village'             },
+  { d1: 'Po 14.9.', d2: 'St 16.9.',  nights: 2, city: 'Hiroshima',  country: 'Japonsko', tag: 'Miyajima Island, Genbaku Dome'},
+  { d1: 'St 16.9.', d2: 'Ne 20.9.',  nights: 4, city: 'Kyoto',    country: 'Japonsko', tag: 'Kiyomizu-dera, Golden Pavilion, Nara, Osaka'},
+  { d1: 'Ne 20.9.', d2: 'So 26.9.',  nights: 6, city: 'Tokyo',    country: 'Japonsko', tag: 'Asakusa, Tokyo Tower, Shibuya, Yokohama'    },
 ];
 
 const TRIP_PHOTOS = [
@@ -225,7 +224,7 @@ function updateOnlineUI() {
 
 /* ════ SVG MAP ══════════════════════════════════════════════ */
 function tripMapSVG() {
-  return `<img src="assets/mapa-popisky.png"
+  return `<img src="assets/mapa-mesta.png"
                style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:contain;display:block;z-index:1;"
                alt="Mapa trasy Korea — Japonsko">`;
 }
@@ -291,16 +290,17 @@ async function loadDashboard() {
 
   // Days badge
   const daysSign = daysLeft >= 0 ? `-${daysLeft}` : `+${Math.abs(daysLeft)}`;
+  const dayStatVal   = daysLeft > 0 ? daysLeft : Math.abs(daysLeft) + 1;
+  const dayStatLabel = daysLeft > 0 ? 'Dní do odjezdu' : 'Den pobytu';
 
   // Prep bars with sub-notes
-  const bookedFlights = flights.length;
-  const bookedAccom   = accommodations.length;
+  const bookedFlights = flights.filter(f => f.booking_ref && f.booking_ref.trim()).length;
+  const bookedAccom   = accommodations.filter(a => a.booking_url && a.booking_url.trim()).length;
   const bookedAct     = activities.filter(a => a.status === 'rezervováno' || a.status === 'hotovo').length;
   const prepData = [
-    { label: 'Letenky',   done: bookedFlights, total: Math.max(bookedFlights, 2), note: 'KLM · OZ'         },
-    { label: 'Ubytování', done: bookedAccom,   total: Math.max(bookedAccom, 6),   note: 'Booking + Ryokan' },
-    { label: 'Aktivity',  done: bookedAct,     total: Math.max(activities.length, 9), note: 'rezervováno'  },
-    { label: 'Doprava',   done: 0,             total: 5,                          note: 'JR + KTX'         },
+    { label: 'Jízdenky',  done: bookedFlights, total: flights.length,       note: 'rezervováno' },
+    { label: 'Ubytování', done: bookedAccom,   total: accommodations.length, note: 'rezervováno' },
+    { label: 'Aktivity',  done: bookedAct,     total: activities.length,    note: 'rezervováno'  },
   ];
   const prepItems = prepData.map(p => {
     const pctBar = p.total ? Math.min(100, Math.round((p.done/p.total)*100)) : 0;
@@ -317,7 +317,7 @@ async function loadDashboard() {
   }).join('');
 
   // Itinerary — first 5 items only (matches design spec), "VŠE →" leads to full list
-  const itineraryHtml = ITINERARY.slice(0, 5).map((item, i) => {
+  const itineraryHtml = ITINERARY.slice(0, 6).map((item, i) => {
     const n = item.nights;
     const nightsLabel = n === 1 ? '1 noc' : n < 5 ? `${n} noci` : `${n} nocí`;
     return `<div class="itinerary-item">
@@ -368,7 +368,7 @@ async function loadDashboard() {
               Září 2026 · Den
               <span class="dash-hero-daybadge">${daysSign}</span>
             </div>
-            <h1 class="dash-hero-title">Tři týdny<br>mezi <em>městy</em> a mořem.</h1>
+            <h1 class="dash-hero-title">Tři týdny<br>mezi <em>městy</em> a mořem</h1>
           </div>
         </div>
         <div class="dash-hero-bottom">
@@ -384,7 +384,7 @@ async function loadDashboard() {
             <div class="dash-date-label">Délka</div>
             <div class="dash-date-value">${tripDays} dní</div>
           </div>
-          <div class="dash-cities-list">Seoul · Gyeongju · Busan · Fukuoka · Hiroshima · Kyoto · Osaka · Tokyo</div>
+          <div class="dash-cities-list">Seoul · Gyeongju · Busan · Fukuoka · Hiroshima · Kyoto · Osaka · Yokohama · Tokyo</div>
         </div>
       </div>
     </div>
@@ -393,7 +393,7 @@ async function loadDashboard() {
       <div class="dash-map-col">
         <div class="dash-map-label">
           <div class="dash-map-label-top">Korea — Japonsko</div>
-          <div class="dash-map-label-sub">~ 1 950 km · 6 zastávek</div>
+          <div class="dash-map-label-sub">~ 1 700 km · 9 měst</div>
         </div>
         ${tripMapSVG()}
       </div>
@@ -412,42 +412,42 @@ async function loadDashboard() {
     <div class="dash-body">
       <div class="dash-col dash-col-border">
         <div class="dash-col-title">
-          <span class="dash-col-h2">Itinerář <em style="color:var(--ink3);font-size:14px;font-family:var(--serif)">v sedmi etapách</em></span>
+          <span class="dash-col-h2">Plán cesty <em style="color:var(--ink3)">v šesti etapách</em></span>
           <span class="dash-col-link" onclick="navigateTo('activities')">VŠE →</span>
         </div>
         <div class="itinerary-list">${itineraryHtml}</div>
       </div>
-      <div class="dash-col dash-col-border" style="background:var(--panel)">
+      <div class="dash-col dash-col-border dash-col-prep" style="background:var(--panel)">
         <div class="dash-col-title">
-          <span class="dash-col-h2" style="font-size:15px"><em>Stav</em> přípravy</span>
+          <span class="dash-col-h2"><em>Stav</em> přípravy</span>
         </div>
         ${prepItems}
+        <div class="pull-quote-stats">
+          <div>
+            <div class="pull-stat-val">${dayStatVal}</div>
+            <div class="pull-stat-label">${dayStatLabel}</div>
+          </div>
+          <div>
+            <div class="pull-stat-val">${pct}&thinsp;<em>%</em></div>
+            <div class="pull-stat-label">Rozpočtu vyčerpáno</div>
+          </div>
+        </div>
       </div>
       <div class="dash-col dash-col-alt">
         <div class="pull-quote-eyebrow">Poznámka redakce</div>
         <p class="pull-quote-text">„Mezi&nbsp;Seoule a&nbsp;Tokiem leží Busan — vlastně proto tam letíme."</p>
         <div class="pull-quote-meta">— Plán cesty, ranní káva, leden 2026</div>
-        <div class="pull-quote-stats">
-          <div>
-            <div class="pull-stat-val">${Math.max(0,daysLeft)}</div>
-            <div class="pull-stat-label">Dní do odjezdu</div>
-          </div>
-          <div>
-            <div class="pull-stat-val">${pct}<em>%</em></div>
-            <div class="pull-stat-label">Rozpočet utracen</div>
-          </div>
-        </div>
       </div>
     </div>
 
     <div class="dash-footer">
       <span>★</span>
-      <span>Seoul 5n</span><span>·</span>
-      <span>Busan 3n</span><span>·</span>
-      <span>Fukuoka 1n</span><span>·</span>
+      <span>Seoul 4n</span><span>·</span>
+      <span>Gyeongju 1n</span><span>·</span>
+      <span>Busan 4n</span><span>·</span>
+      <span>Hiroshima 2n</span><span>·</span>
       <span>Kyoto 4n</span><span>·</span>
-      <span>Hakone 2n</span><span>·</span>
-      <span>Tokyo 8n</span>
+      <span>Tokyo 7n</span>
       <span class="dash-footer-edit" onclick="navigateTo('activities')">úprava itineráře →</span>
     </div>`;
 
@@ -464,8 +464,8 @@ function updatePhotoButtons() {
   const prevBtn = document.getElementById('photo-prev-btn');
   const nextBtn = document.getElementById('photo-next-btn');
   if (!prevBtn || !nextBtn) return;
-  const maxIdx = Math.max(0, TRIP_PHOTOS.length - 4);
-  const showArrows = TRIP_PHOTOS.length > 4;
+  const maxIdx = Math.max(0, TRIP_PHOTOS.length - 6);
+  const showArrows = TRIP_PHOTOS.length > 6;
   prevBtn.style.display = showArrows ? '' : 'none';
   nextBtn.style.display = showArrows ? '' : 'none';
   prevBtn.style.opacity = photoCurrent === 0 ? '0.3' : '1';
@@ -476,7 +476,7 @@ function photoNav(dir) {
   const strip = document.getElementById('photos-strip');
   if (!strip) return;
   const gap = 8;
-  const visCount = 4;
+  const visCount = 6;
   const maxIdx = Math.max(0, TRIP_PHOTOS.length - visCount);
   photoCurrent = Math.max(0, Math.min(photoCurrent + dir, maxIdx));
   const itemW = Math.floor((strip.parentElement.offsetWidth - gap * (visCount - 1)) / visCount);
@@ -578,11 +578,12 @@ async function loadAccommodations() {
   const totalCost = data.reduce((s,a) => s + parseFloat(a.price_czk||0), 0);
 
   const el = document.getElementById('accommodations-content');
+  const nocForm = nights === 1 ? 'noc' : nights <= 4 ? 'noci' : 'nocí';
   el.innerHTML = pageHeader({
     num: 3, label: 'Ubytování',
-    h1: nights > 0 ? `${nights} nocí.` : 'Hotel, hostel, ryokan.',
+    h1: nights > 0 ? `${nights} ${nocForm} na cestě` : 'Hotel, hostel, ryokan.',
     accentWord: nights > 0 ? `${nights}` : 'ryokan',
-    desc: 'Mix hotelů, hostelů a apartmánů na cestě.',
+    desc: 'Seznam ubytování na naší cestě',
     stats: [
       { value: `${nights}`, label: 'nocí celkem' },
       { value: `${formatKc(totalCost)} Kč`, label: 'cena celkem' },
@@ -594,42 +595,91 @@ async function loadAccommodations() {
       ? `<div class="cards-grid">${data.map(accommodationCard).join('')}</div>`
       : emptyState('ti-bed', 'Žádné ubytování', 'Přidejte první hotel nebo apartmán.')
     }
+  </div>
+  <div class="dash-footer">
+    <span>★</span>
+    <span>Seoul 4n</span><span>·</span>
+    <span>Gyeongju 1n</span><span>·</span>
+    <span>Busan 4n</span><span>·</span>
+    <span>Hiroshima 2n</span><span>·</span>
+    <span>Kyoto 4n</span><span>·</span>
+    <span>Tokyo 6n</span>
   </div>`;
+}
+
+function accomNocLabel(n) {
+  if (n === 1) return '1 noc';
+  if (n <= 4) return `${n} noci`;
+  return `${n} nocí`;
+}
+
+function accomHeroImg(a) {
+  const text = `${a.name||''} ${a.address||''} ${a.notes||''}`.toLowerCase();
+  if (/busan|pusan|haeundae|gamcheon/.test(text))   return 'assets/Busan-beach.jpg';
+  if (/kyoto|kiyomizu|higashiyama|gion/.test(text)) return 'assets/Kyoto-zlaty-pavilon.jpg';
+  if (/hiroshima|miyajima/.test(text))              return 'assets/Hiroshima-pamatnik.jpg';
+  if (/tokyo|shibuya|asakusa|shinjuku|ueno/.test(text)) return 'assets/Tokyo-Shibuya.jpg';
+  if (/nara/.test(text))                            return 'assets/Nara-Japonsko.jpg';
+  if (/seoul|jongno|hongdae|myeongdong|itaewon/.test(text))
+    return 'https://images.unsplash.com/photo-1538485399081-7191377e8241?w=400&auto=format&fit=crop&q=80';
+  if (/gyeongju|bulguksa/.test(text))
+    return 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400&auto=format&fit=crop&q=80';
+  if (/fukuoka|hakata/.test(text))
+    return 'https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?w=400&auto=format&fit=crop&q=80';
+  if (/hakone|onsen|ryokan/.test(text))
+    return 'https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=400&auto=format&fit=crop&q=80';
+  if (/osaka|dotonbori/.test(text))
+    return 'https://images.unsplash.com/photo-1588598207040-7ac3da45e571?w=400&auto=format&fit=crop&q=80';
+  return a.country === 'Japonsko'
+    ? 'https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=400&auto=format&fit=crop&q=80'
+    : 'https://images.unsplash.com/photo-1538485399081-7191377e8241?w=400&auto=format&fit=crop&q=80';
+}
+
+function shortDateNoYear(iso) {
+  if (!iso) return '—';
+  const CZ_DAYS = ['Ne','Po','Út','St','Čt','Pá','So'];
+  const d = new Date(iso + 'T00:00:00');
+  return `${CZ_DAYS[d.getDay()]} ${d.getDate()}.${d.getMonth()+1}.`;
 }
 
 function accommodationCard(a) {
   const nights = a.checkin && a.checkout
     ? Math.max(0, Math.ceil((new Date(a.checkout)-new Date(a.checkin))/86400000)) : null;
-  const heroImg = a.country === 'Japonsko'
-    ? 'https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=400&auto=format&fit=crop&q=80'
-    : 'https://images.unsplash.com/photo-1538485399081-7191377e8241?w=400&auto=format&fit=crop&q=80';
+  const heroImg = accomHeroImg(a);
+  const dateRange = a.checkin && a.checkout
+    ? `${shortDateNoYear(a.checkin)} – ${shortDateNoYear(a.checkout)}` : null;
   return `<div class="hotel-card">
     <div class="hotel-hero">
       <img class="hotel-hero-img" src="${heroImg}" alt="${esc(a.name)}" loading="lazy">
       <div class="hotel-hero-overlay"></div>
       <div class="hotel-hero-info">
-        <span class="hotel-city-badge">${(a.country||'').toUpperCase()}${nights ? ` · ${nights} NOCÍ` : ''}</span>
+        ${nights ? `<span class="hotel-nights-badge">${accomNocLabel(nights)}</span>` : '<span></span>'}
         <div class="hotel-action-btns">
-          <button class="btn-icon edit"   onclick="openEditModal('accommodations','${a.id}')" title="Upravit"><i class="ti ti-pencil"></i></button>
           <button class="btn-icon delete" onclick="confirmDelete('accommodations','${a.id}')" title="Smazat"><i class="ti ti-trash"></i></button>
         </div>
       </div>
     </div>
     <div class="hotel-body">
-      <div class="hotel-name">${esc(a.name)}</div>
+      <div class="hotel-name-row">
+        <div class="hotel-name">${esc(a.name)}</div>
+        ${a.address ? `<span class="hotel-address">${esc(a.address)}</span>` : ''}
+      </div>
       <div class="hotel-meta">
-        ${a.address ? `<div class="hotel-row"><i class="ti ti-map-pin"></i><span>${esc(a.address)}</span></div>` : ''}
-        <div class="hotel-row"><i class="ti ti-calendar"></i><span>Check-in: ${formatDateCZ(a.checkin)}</span></div>
-        <div class="hotel-row"><i class="ti ti-calendar-check"></i><span>Check-out: ${formatDateCZ(a.checkout)}</span></div>
-        ${a.price_czk ? `<div class="hotel-row"><i class="ti ti-receipt"></i><span>${formatKc(a.price_czk)} Kč</span></div>` : ''}
-        ${a.booking_url ? `<div class="hotel-row"><i class="ti ti-link"></i><a href="${esc(a.booking_url)}" target="_blank" rel="noopener">Odkaz na rezervaci</a></div>` : ''}
-        ${a.notes ? `<div class="hotel-row"><i class="ti ti-notes"></i><span>${esc(a.notes)}</span></div>` : ''}
+        <div class="hotel-row hotel-row-date${dateRange ? '' : ' hotel-row-empty'}"><i class="ti ti-calendar"></i><span>${dateRange || '—'}</span></div>
+        <div class="hotel-row${a.price_czk ? '' : ' hotel-row-empty'}"><i class="ti ti-receipt"></i><span>${a.price_czk ? formatKc(a.price_czk) + ' Kč' : '—'}</span></div>
+        <div class="hotel-row${a.booking_url ? '' : ' hotel-row-empty'}"><i class="ti ti-link"></i>${a.booking_url ? `<a href="${esc(a.booking_url)}" target="_blank" rel="noopener">Odkaz na rezervaci</a>` : '<span>—</span>'}</div>
+        <div class="hotel-row hotel-row-notes${a.notes ? '' : ' hotel-row-empty'}"><i class="ti ti-notes"></i><span>${a.notes ? esc(a.notes) : '—'}</span></div>
       </div>
       <div class="hotel-footer">
         ${countryBadge(a.country)}
-        ${a.price_czk ? `<span class="price-tag">${formatKc(a.price_czk)} Kč</span>` : ''}
       </div>
     </div>
+    <button class="hotel-edit-btn" onclick="openEditModal('accommodations','${a.id}')" title="Upravit">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    </button>
   </div>`;
 }
 
@@ -647,7 +697,7 @@ function renderActivitiesFromCache() {
 
   const header = pageHeader({
     num: 4, label: 'Místa',
-    h1: 'Záminka vstávat brzo.', accentWord: 'vstávat',
+    h1: 'Důvody vstávat brzo', accentWord: 'vstávat',
     desc: 'Chrámy, výlety, příroda. Vše co stojí za brzké vstávání.',
     stats: [{ value: `${data.length}`, label: 'aktivit' }],
     addSection: 'activities', addLabel: 'Přidat aktivitu',
@@ -1190,8 +1240,8 @@ function flightsForm(d) { return `<form class="modal-form">
 </form>`; }
 
 function accommodationsForm(d) { return `<form class="modal-form">
-  <div class="form-group"><label>Název <span class="form-required">*</span></label><input name="name" value="${esc(d.name||'')}" placeholder="Hotel Granvia Seoul" required></div>
-  <div class="form-group"><label>Adresa</label><input name="address" value="${esc(d.address||'')}"></div>
+  <div class="form-group"><label>Město <span class="form-required">*</span></label><input name="name" value="${esc(d.name||'')}" placeholder="Seoul" required></div>
+  <div class="form-group"><label>Adresa / název hotelu</label><input name="address" value="${esc(d.address||'')}"></div>
   <div class="form-row">
     <div class="form-group"><label>Check-in <span class="form-required">*</span></label><input type="date" name="checkin" value="${d.checkin||TRIP_DEFAULT_DATE}" required></div>
     <div class="form-group"><label>Check-out <span class="form-required">*</span></label><input type="date" name="checkout" value="${d.checkout||TRIP_DEFAULT_DATE}" required></div>

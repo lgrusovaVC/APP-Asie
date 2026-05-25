@@ -518,8 +518,8 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   display: flex; justify-content: space-between; align-items: baseline;
   margin-bottom: 10px;
 }
-.dash-photos-title { font-family: var(--serif); font-size: 18px; font-weight: 400; }
-.dash-photos-title em { font-style: italic; color: var(--ink3); font-size: 13px; }
+.dash-photos-title { font-family: var(--serif); font-size: 26px; font-weight: 400; }
+.dash-photos-title em { font-style: italic; color: var(--ink3); }
 .dash-photos-count {
   font-family: var(--mono); font-size: 10px; color: var(--ink3); letter-spacing: .1em;
 }
@@ -533,7 +533,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   will-change: transform;
 }
 .dash-photo-item {
-  flex: 0 0 calc((100cqi - 24px) / 4);
+  flex: 0 0 calc((100cqi - 40px) / 6);
   aspect-ratio: 3 / 4;
   position: relative;
   background-size: cover; background-position: center;
@@ -571,12 +571,16 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 }
 .dash-col-border { border-right: 1px solid var(--rule); }
 .dash-col-alt { background: var(--alt); position: relative; }
+.dash-col-prep { display: flex; flex-direction: column; }
+.dash-col-prep .pull-quote-stats { margin-top: auto; }
+.dash-col-prep .pull-quote-stats > div:last-child { text-align: right; }
+.dash-col-prep .pull-quote-stats .pull-stat-label { color: var(--sb-accent); }
 
 .dash-col-title {
   display: flex; justify-content: space-between; align-items: baseline;
   margin-bottom: 16px;
 }
-.dash-col-h2 { font-family: var(--serif); font-size: 22px; font-weight: 400; }
+.dash-col-h2 { font-family: var(--serif); font-size: 26px; font-weight: 400; }
 .dash-col-h2 em { font-style: italic; color: var(--ink3); }
 .dash-col-link {
   font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
@@ -591,11 +595,12 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   padding: 12px 0; border-bottom: 1px solid var(--rule);
 }
 .itinerary-item:first-child { border-top: 1px solid var(--rule); }
+.itinerary-item:last-child { border-bottom: none; }
 .itinerary-num { font-family: var(--serif); font-size: 24px; color: var(--acc); line-height: 1; }
 .itinerary-city { font-size: 14px; font-weight: 500; color: var(--ink); }
 .itinerary-city em { font-style: italic; font-weight: 400; font-family: var(--serif); font-size: 13px; color: var(--ink3); }
 .itinerary-dates {
-  margin-top: 2px; font-family: var(--mono); font-size: 10px;
+  margin-top: 2px; font-family: var(--mono); font-size: 13px;
   color: var(--ink3); letter-spacing: .04em;
 }
 .itinerary-nights { font-family: var(--serif); font-size: 13px; color: var(--ink2); font-style: italic; }
@@ -650,7 +655,9 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 ══════════════════════════════════════════════════════════════ */
 .flights-list { display: flex; flex-direction: column; gap: 10px; }
 
-#flights-content .page-desc { text-align: right; }
+#flights-content .page-desc,
+#accommodations-content .page-desc,
+#activities-content .page-desc { text-align: right; }
 
 .flight-card {
   display: grid; grid-template-columns: 220px 1fr;
@@ -776,8 +783,17 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .hotel-card {
   border: 1px solid var(--rule); border-top: none;
   background: var(--panel); overflow: hidden;
+  position: relative;
   transition: background var(--transition);
 }
+.hotel-edit-btn {
+  position: absolute; bottom: 10px; right: 10px;
+  background: none; border: none; cursor: pointer;
+  color: var(--ink3); opacity: 0.4; padding: 4px;
+  transition: opacity .15s, color .15s;
+  line-height: 0;
+}
+.hotel-card:hover .hotel-edit-btn { opacity: 1; color: var(--acc); }
 .cards-grid .hotel-card { border-top: 1px solid var(--rule); }
 .hotel-card:hover { background: var(--alt); }
 .hotel-hero {
@@ -798,20 +814,38 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   color: rgba(255,255,255,.85); background: rgba(0,0,0,.38); padding: 3px 8px;
   backdrop-filter: blur(4px);
 }
+.hotel-nights-badge {
+  font-family: var(--serif); font-size: 22px; font-weight: 400; font-style: italic;
+  color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.5);
+}
 .hotel-action-btns { display: flex; gap: 2px; }
 .hotel-action-btns .btn-icon { color: rgba(255,255,255,.7); background: rgba(0,0,0,.3); }
 .hotel-action-btns .btn-icon:hover { background: rgba(0,0,0,.5); color: #fff; }
 .hotel-action-btns .btn-icon.delete:hover { background: rgba(207,58,42,.6); color: #fff; }
 .hotel-body { padding: 14px 16px 16px; }
-.hotel-name { font-family: var(--serif); font-size: 20px; font-weight: 400; color: var(--ink); margin-bottom: 10px; }
+.hotel-name-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.hotel-name { font-family: var(--serif); font-size: 20px; font-weight: 400; color: var(--ink); }
 .hotel-meta { display: flex; flex-direction: column; gap: 5px; }
 .hotel-row { display: flex; align-items: flex-start; gap: 7px; font-size: 13px; color: var(--ink2); }
 .hotel-row i { font-size: .85rem; color: var(--acc); flex-shrink: 0; margin-top: 2px; }
 .hotel-row a { color: var(--acc); text-decoration: underline; }
 .hotel-footer {
   margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--rule);
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
+.hotel-address {
+  font-family: var(--serif); font-style: italic; font-size: 15px; color: var(--ink3);
+  text-align: right; margin-left: auto;
+}
+.hotel-row-empty { visibility: hidden; }
+.hotel-row-date { font-size: 14px; font-weight: 600; color: var(--ink); }
+.hotel-row-notes span { font-style: italic; }
+#section-accommodations.active { display: flex; flex-direction: column; min-height: 100dvh; }
+#section-accommodations #accommodations-content { display: flex; flex-direction: column; flex: 1; }
+#accommodations-content .section-body { flex: 1; }
+#accommodations-content .cards-grid { gap: 16px; border: none; }
+#accommodations-content .hotel-name { color: var(--sb-accent); }
+#accommodations-content .dash-footer { border-top: 1px solid var(--rule); border-bottom: none; }
 
 /* ══════════════════════════════════════════════════════════════
    TRANSPORT — TABLE
