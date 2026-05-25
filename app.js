@@ -689,51 +689,86 @@ async function loadActivities() {
   renderActivitiesFromCache();
 }
 
+function activityEffectiveStatus(a) {
+  if (a.status === 'hotovo') return 'hotovo';
+  if (a.date) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (new Date(a.date + 'T00:00:00') < today) return 'hotovo';
+  }
+  return a.status || 'naplánováno';
+}
+
 function renderActivitiesFromCache() {
-  const data = getCache('activities');
+  const raw = getCache('activities');
+
+  const data = raw
+    .map(a => ({ ...a, _status: activityEffectiveStatus(a) }))
+    .sort((a, b) => {
+      const d = (a.date||'').localeCompare(b.date||'');
+      return d !== 0 ? d : (a.time||'').localeCompare(b.time||'');
+    });
+
   const counts = { all: data.length, naplánováno: 0, rezervováno: 0, hotovo: 0 };
-  data.forEach(a => { if (counts[a.status] !== undefined) counts[a.status]++; });
-  const filtered = activitiesFilter === 'all' ? data : data.filter(a => a.status === activitiesFilter);
+  data.forEach(a => { if (counts[a._status] !== undefined) counts[a._status]++; });
+  const filtered = activitiesFilter === 'all' ? data : data.filter(a => a._status === activitiesFilter);
 
   const header = pageHeader({
     num: 4, label: 'Místa',
     h1: 'Důvody vstávat brzo', accentWord: 'vstávat',
     desc: 'Chrámy, výlety, příroda. Vše co stojí za brzké vstávání.',
-    stats: [{ value: `${data.length}`, label: 'aktivit' }],
+    stats: [{ value: `${data.length}`, label: 'zážitků' }],
     addSection: 'activities', addLabel: 'Přidat aktivitu',
   });
 
   const filterBar = `<div class="filter-bar" id="activities-filter">
-    <button class="filter-btn ${activitiesFilter==='all'?'active':''}" data-filter="all">Vše <span class="filter-count">${counts.all}</span></button>
+    <button class="filter-btn ${activitiesFilter==='all'?'active':''}" data-filter="all">Harmonogram <span class="filter-count">${counts.all}</span></button>
     <button class="filter-btn ${activitiesFilter==='rezervováno'?'active':''}" data-filter="rezervováno">Rezervováno <span class="filter-count">${counts.rezervováno}</span></button>
-    <button class="filter-btn ${activitiesFilter==='naplánováno'?'active':''}" data-filter="naplánováno">Plánuju <span class="filter-count">${counts.naplánováno}</span></button>
+    <button class="filter-btn ${activitiesFilter==='naplánováno'?'active':''}" data-filter="naplánováno">Naplánováno <span class="filter-count">${counts.naplánováno}</span></button>
     <button class="filter-btn ${activitiesFilter==='hotovo'?'active':''}" data-filter="hotovo">Hotovo <span class="filter-count">${counts.hotovo}</span></button>
   </div>`;
 
   document.getElementById('activities-content').innerHTML = header + filterBar + `<div class="section-body">
     ${filtered.length
-      ? `<div class="cards-grid">${filtered.map(activityCard).join('')}</div>`
+      ? `<div class="activity-list">${filtered.map(activityCard).join('')}</div>`
       : emptyState('ti-map-pin', 'Žádné aktivity', 'Přidejte výlet nebo aktivitu.')
     }
   </div>`;
 }
 
 function activityCard(a) {
-  const sMap = { 'naplánováno':['badge-planned','Plánuju'], 'rezervováno':['badge-booked','Rezervováno'], 'hotovo':['badge-done','Hotovo'] };
-  const [cls,label] = sMap[a.status]||['badge-planned',a.status];
-  return `<div class="card">
-    <div class="card-header">
-      <div class="card-title">${esc(a.name)}</div>
-      <div class="card-actions">${actionBtns('activities', a.id)}</div>
+  const status = a._status || a.status || 'naplánováno';
+  const sMap = { 'naplánováno':['badge-planned','Naplánováno'], 'rezervováno':['badge-booked','Rezervováno'], 'hotovo':['badge-done','Hotovo'] };
+  const [cls, label] = sMap[status] || ['badge-planned', status];
+  const hasPrice = a.price !== null && a.price !== undefined && a.price !== '';
+  return `<div class="activity-card${a.photo_url ? ' activity-card-photo' : ''}">
+    <div class="activity-date-col">
+      ${countryBadge(a.country)}
+      ${a.date ? `<div class="activity-date">${shortDateNoYear(a.date)}</div>` : ''}
+      ${a.time ? `<div class="activity-time">${a.time.slice(0,5)}</div>` : ''}
     </div>
-    <div class="card-body">
-      ${a.date ? cardRow('ti-calendar', formatDateCZ(a.date)+(a.time?' · '+a.time.slice(0,5):'')) : ''}
-      ${a.location ? cardRow('ti-map-pin', esc(a.location)) : ''}
-      ${a.price ? cardRow('ti-receipt', `${formatKc(a.price)} Kč`) : ''}
-      ${a.url ? cardRow('ti-link', `<a href="${esc(a.url)}" target="_blank" rel="noopener">Odkaz</a>`) : ''}
-      ${a.notes ? cardRow('ti-notes', esc(a.notes)) : ''}
+    ${a.photo_url ? `<div class="activity-photo" style="background-image:url('${esc(a.photo_url)}')"></div>` : ''}
+    <div class="activity-main">
+      <div class="activity-name">
+        ${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener" class="activity-name-link">${esc(a.name)}</a>` : esc(a.name)}
+      </div>
+      <div class="activity-detail${(a.location || a.map_url) ? '' : ' activity-detail-empty'}">
+        ${a.location ? esc(a.location) : (a.map_url ? '' : '—')}
+        ${a.map_url ? `<a href="${esc(a.map_url)}" target="_blank" rel="noopener" class="activity-map-icon" title="Otevřít mapu"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></a>` : ''}
+      </div>
+      <div class="activity-detail activity-detail-notes${a.notes ? '' : ' activity-detail-empty'}">${a.notes ? esc(a.notes) : '—'}</div>
+      <div class="activity-detail${hasPrice ? '' : ' activity-detail-empty'}">
+        ${hasPrice ? `Cena ${formatKc(a.price)} Kč` : '—'}
+      </div>
     </div>
-    <div class="card-footer">${countryBadge(a.country)}<span class="badge ${cls}">${label}</span></div>
+    <div class="activity-badges">
+      <span class="badge ${cls}">${label}</span>
+    </div>
+    <button class="activity-edit-btn" onclick="openEditModal('activities','${a.id}')" title="Upravit">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    </button>
   </div>`;
 }
 
@@ -1255,7 +1290,7 @@ function accommodationsForm(d) { return `<form class="modal-form">
 </form>`; }
 
 function activitiesForm(d) {
-  const statuses = ['naplánováno','rezervováno','hotovo'];
+  const statuses = ['naplánováno','rezervováno'];
   const sOpts = statuses.map(s => `<option value="${s}" ${d.status===s?'selected':''}>${s}</option>`).join('');
   return `<form class="modal-form">
   <div class="form-group"><label>Název <span class="form-required">*</span></label><input name="name" value="${esc(d.name||'')}" required></div>
@@ -1265,12 +1300,16 @@ function activitiesForm(d) {
   </div>
   <div class="form-group"><label>Místo</label><input name="location" value="${esc(d.location||'')}"></div>
   <div class="form-row">
-    <div class="form-group"><label>Cena (Kč)</label><input type="number" name="price" value="${d.price||''}" min="0"></div>
+    <div class="form-group"><label>Cena (Kč)</label><input type="number" name="price" value="${d.price != null ? d.price : ''}" min="0"></div>
     <div class="form-group"><label>Status</label><select name="status">${sOpts}</select></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label>Země</label><select name="country">${countryOpts(d.country, false)}</select></div>
     <div class="form-group"><label>Odkaz</label><input type="url" name="url" value="${esc(d.url||'')}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Odkaz na mapu</label><input type="url" name="map_url" value="${esc(d.map_url||'')}" placeholder="https://maps.google.com/..."></div>
+    <div class="form-group"><label>Foto (URL)</label><input type="url" name="photo_url" value="${esc(d.photo_url||'')}" placeholder="https://..."></div>
   </div>
   <div class="form-group"><label>Poznámky</label><textarea name="notes">${esc(d.notes||'')}</textarea></div>
 </form>`; }

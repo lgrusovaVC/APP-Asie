@@ -50,10 +50,14 @@ CREATE TABLE IF NOT EXISTS activities (
   status     TEXT    DEFAULT 'naplánováno'
                CHECK (status IN ('naplánováno', 'rezervováno', 'hotovo')),
   notes      TEXT,
+  photo_url  TEXT,
+  map_url    TEXT,
   country    TEXT    DEFAULT 'Korea',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS photo_url text;
+ALTER TABLE activities ADD COLUMN IF NOT EXISTS map_url text;
 
 -- ── Restaurace & jídlo ───────────────────────────────────────
 CREATE TABLE IF NOT EXISTS restaurants (
@@ -131,4 +135,5 @@ END; $do$;
 -- Pro přístup z frontendu se používá anon key + JWT session.
 -- Pokud chcete data zabezpečit, zapněte RLS a přidejte policy:
 --   ALTER TABLE flights ENABLE ROW LEVEL SECURITY;
+--   DROP POLICY IF EXISTS "auth_only" ON flights;
 --   CREATE POLICY "auth_only" ON flights USING (auth.role() = 'authenticated');
