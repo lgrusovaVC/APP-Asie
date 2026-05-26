@@ -191,15 +191,13 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .app {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
-  height: 100dvh;
-  overflow: hidden;
+  min-height: 100dvh;
   max-width: 1440px;
   margin: 0 auto;
 }
 .main-content {
   grid-column: 2;
-  overflow-y: auto;
-  height: 100dvh;
+  min-height: 100dvh;
   background: var(--bg);
 }
 .section { display: none; }
@@ -638,6 +636,16 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   margin-top: 14px; font-family: var(--mono); font-size: 10px;
   letter-spacing: .14em; color: var(--ink3);
 }
+.dash-todo {
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--rule);
+}
+.dash-todo-title {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--acc); margin-bottom: 10px;
+}
+.dash-todo-empty {
+  font-family: var(--serif); font-style: italic; font-size: 14px; color: var(--ink3);
+}
 .pull-quote-stats {
   margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--rule);
   display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
@@ -888,9 +896,11 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .hotel-row-empty { visibility: hidden; }
 .hotel-row-date { font-size: 14px; font-weight: 600; color: var(--ink); }
 .hotel-row-notes span { font-style: italic; }
-#section-accommodations.active { display: flex; flex-direction: column; min-height: 100dvh; }
-#section-accommodations #accommodations-content { display: flex; flex-direction: column; flex: 1; }
+#section-accommodations.active, #section-dashboard.active { display: flex; flex-direction: column; min-height: 100dvh; }
+#section-accommodations #accommodations-content,
+#section-dashboard #dashboard-content { display: flex; flex-direction: column; flex: 1; }
 #accommodations-content .section-body { flex: 1; }
+#dashboard-content .dash-footer { margin-top: auto; }
 #accommodations-content .cards-grid { gap: 16px; border: none; }
 #accommodations-content .hotel-name { color: var(--sb-accent); }
 #accommodations-content .dash-footer { border-top: 1px solid var(--rule); border-bottom: none; }

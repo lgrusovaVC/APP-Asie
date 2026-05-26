@@ -434,22 +434,16 @@ async function loadDashboard() {
         </div>
       </div>
       <div class="dash-col dash-col-alt">
-        <div class="pull-quote-eyebrow">Poznámka redakce</div>
-        <p class="pull-quote-text">„Mezi&nbsp;Seoule a&nbsp;Tokiem leží Busan — vlastně proto tam letíme."</p>
-        <div class="pull-quote-meta">— Plán cesty, ranní káva, leden 2026</div>
+        <div class="pull-quote-eyebrow">Motto cesty</div>
+        <p class="pull-quote-text">„Jedeme oslavit, jak mládneme, a prožít budoucí nezapomenutelné vzpomínky."</p>
+        <div class="dash-todo">
+          <div class="dash-todo-title">K vyřízení</div>
+          <div class="dash-todo-empty">Žádné položky zatím nepřidány.</div>
+        </div>
       </div>
     </div>
 
-    <div class="dash-footer">
-      <span>★</span>
-      <span>Seoul 4n</span><span>·</span>
-      <span>Gyeongju 1n</span><span>·</span>
-      <span>Busan 4n</span><span>·</span>
-      <span>Hiroshima 2n</span><span>·</span>
-      <span>Kyoto 4n</span><span>·</span>
-      <span>Tokyo 7n</span>
-      <span class="dash-footer-edit" onclick="navigateTo('activities')">úprava itineráře →</span>
-    </div>`;
+    ${tripFooter()}`;
 
   initPhotoCarousel();
 }
@@ -499,7 +493,8 @@ async function loadFlights() {
       ? `<div class="flights-list">${data.map(flightCard).join('')}</div>`
       : emptyState('ti-plane', 'Žádné letenky', 'Přidejte první letenku nebo transfer.')
     }
-  </div>`;
+  </div>
+  ${tripFooter()}`;
 }
 
 function flightCard(f) {
@@ -596,15 +591,7 @@ async function loadAccommodations() {
       : emptyState('ti-bed', 'Žádné ubytování', 'Přidejte první hotel nebo apartmán.')
     }
   </div>
-  <div class="dash-footer">
-    <span>★</span>
-    <span>Seoul 4n</span><span>·</span>
-    <span>Gyeongju 1n</span><span>·</span>
-    <span>Busan 4n</span><span>·</span>
-    <span>Hiroshima 2n</span><span>·</span>
-    <span>Kyoto 4n</span><span>·</span>
-    <span>Tokyo 6n</span>
-  </div>`;
+  ${tripFooter()}`;
 }
 
 function accomNocLabel(n) {
@@ -708,9 +695,14 @@ function renderActivitiesFromCache() {
       return d !== 0 ? d : (a.time||'').localeCompare(b.time||'');
     });
 
-  const counts = { all: data.length, naplánováno: 0, rezervováno: 0, hotovo: 0 };
-  data.forEach(a => { if (counts[a._status] !== undefined) counts[a._status]++; });
-  const filtered = activitiesFilter === 'all' ? data : data.filter(a => a._status === activitiesFilter);
+  const counts = { all: 0, naplánováno: 0, rezervováno: 0, hotovo: 0 };
+  data.forEach(a => {
+    if (counts[a._status] !== undefined) counts[a._status]++;
+    if (a._status !== 'hotovo') counts.all++;
+  });
+  const filtered = activitiesFilter === 'all'
+    ? data.filter(a => a._status !== 'hotovo')
+    : data.filter(a => a._status === activitiesFilter);
 
   const header = pageHeader({
     num: 4, label: 'Místa',
@@ -732,7 +724,8 @@ function renderActivitiesFromCache() {
       ? `<div class="activity-list">${filtered.map(activityCard).join('')}</div>`
       : emptyState('ti-map-pin', 'Žádné aktivity', 'Přidejte výlet nebo aktivitu.')
     }
-  </div>`;
+  </div>
+  ${tripFooter()}`;
 }
 
 function activityCard(a) {
@@ -803,7 +796,8 @@ function renderRestaurantsFromCache() {
       ? `<div class="cards-grid">${filtered.map(restaurantCard).join('')}</div>`
       : emptyState('ti-utensils', 'Žádné restaurace', 'Přidejte restauraci nebo kavárnu.')
     }
-  </div>`;
+  </div>
+  ${tripFooter()}`;
 }
 
 function restaurantCard(r) {
@@ -859,7 +853,8 @@ async function loadTransport() {
       </table>
     </div>` : emptyState('ti-train', 'Žádné spoje', 'Přidejte vlak, metro nebo autobus.')
     }
-  </div>`;
+  </div>
+  ${tripFooter()}`;
 }
 
 function transportRow(t) {
@@ -985,7 +980,8 @@ function renderBudget(expenses) {
         ${expenses.length ? expItems : `<div class="empty-state" style="padding:30px 0"><p>Žádné výdaje.</p></div>`}
       </div>
     </div>
-  </div>`;
+  </div>
+  ${tripFooter()}`;
 }
 
 function budgetWords(amount) {
@@ -1134,7 +1130,8 @@ async function loadCalendar() {
     accentWord: 'kdy',
     desc: 'Kliknutím na den zobrazíte vše naplánované',
     stats: [],
-  }) + `<div class="section-body"><div id="cal-root" class="cal-root"></div></div>`;
+  }) + `<div class="section-body"><div id="cal-root" class="cal-root"></div></div>
+  ${tripFooter()}`;
 
   const [flights, accs, acts, trans] = await Promise.all([
     fetchData('flights','date'),
@@ -1402,6 +1399,18 @@ function actionBtns(section, id) {
 }
 function emptyState(icon, title, sub) {
   return `<div class="empty-state"><i class="ti ${icon}"></i><h3>${title}</h3><p>${sub}</p></div>`;
+}
+
+function tripFooter() {
+  return `<div class="dash-footer">
+    <span>★</span>
+    <span>Seoul 4n</span><span>·</span>
+    <span>Gyeongju 1n</span><span>·</span>
+    <span>Busan 4n</span><span>·</span>
+    <span>Hiroshima 2n</span><span>·</span>
+    <span>Kyoto 4n</span><span>·</span>
+    <span>Tokyo 6n</span>
+  </div>`;
 }
 
 const _s = document.createElement('style');
