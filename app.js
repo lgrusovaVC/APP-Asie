@@ -19,7 +19,7 @@ let calEventMap = {};
 
 const SECTION_TITLES = {
   dashboard: 'Přehled', flights: 'Cestování', accommodations: 'Ubytování',
-  activities: 'Místa', restaurants: 'Restaurace',
+  activities: 'Místa', priprava: 'Příprava', restaurants: 'Restaurace',
   transport: 'Jízdní řády', budget: 'Rozpočet', calendar: 'Kalendář',
 };
 const CAT_ICONS = { 'Letenky':'✈️','Ubytování':'🏨','Aktivity':'🗺️','Jídlo':'🍜','Doprava':'🚆','Ostatní':'💳' };
@@ -146,6 +146,26 @@ async function logout() { await db.auth.signOut(); showLogin(); }
 function showLogin() {
   document.getElementById('login-screen').style.display = '';
   document.getElementById('app').style.display = 'none';
+  updateLoginDynamic();
+}
+
+function updateLoginDynamic() {
+  if (!CONFIG.DEPARTURE_DATE || !CONFIG.RETURN_DATE) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dep   = new Date(CONFIG.DEPARTURE_DATE + 'T00:00:00');
+  const ret   = new Date(CONFIG.RETURN_DATE    + 'T00:00:00');
+  const left  = Math.ceil((dep - today) / 86400000);
+  const trip  = Math.ceil((ret - dep)   / 86400000);
+  const sub   = document.getElementById('login-card-sub');
+  const badge = document.getElementById('login-daybadge');
+  if (sub) sub.textContent = left > 0
+    ? `${left} dní do odjezdu · 8 měst · ${trip} dní`
+    : left === 0
+      ? `Odjezd dnes · 8 měst · ${trip} dní`
+      : `Den pobytu ${Math.abs(left)+1} · 8 měst · ${trip} dní`;
+  if (badge) badge.textContent = left >= 0 ? `Den −${left}` : `Den +${Math.abs(left)}`;
+  const eyebrow = document.getElementById('login-eyebrow');
+  if (eyebrow) eyebrow.textContent = left > 31 ? 'Pomalu se chystáme' : left > 0 ? 'Už se to blíží' : 'Je to tady!';
 }
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
@@ -162,6 +182,21 @@ function setupNavigation() {
     if (addBtn && !addBtn.disabled) { openAddModal(addBtn.dataset.add); return; }
     const filterBtn = e.target.closest('.filter-btn');
     if (filterBtn) handleFilterClick(filterBtn);
+
+    // Todos
+    const delBtn = e.target.closest('[data-todo-delete]');
+    if (delBtn) { e.stopPropagation(); todoDelete(delBtn.dataset.todoDelete); return; }
+    const todoItem = e.target.closest('.todo-item');
+    if (todoItem?.dataset.id && !e.target.closest('.todo-text')) {
+      todoToggle(todoItem.dataset.id, !todoItem.classList.contains('done'));
+    }
+  });
+  document.addEventListener('submit', (e) => {
+    if (e.target.id === 'todo-add-form') todoAdd(e);
+  });
+  document.addEventListener('dblclick', (e) => {
+    const textEl = e.target.closest('.todo-text');
+    if (textEl) { e.stopPropagation(); todoStartEdit(textEl); }
   });
 }
 
@@ -178,8 +213,8 @@ function navigateTo(section) {
 
 function loadSection(s) {
   const map = { dashboard:'loadDashboard', flights:'loadFlights', accommodations:'loadAccommodations',
-                activities:'loadActivities', restaurants:'loadRestaurants', transport:'loadTransport',
-                budget:'loadBudget', calendar:'loadCalendar' };
+                activities:'loadActivities', priprava:'loadPriprava', restaurants:'loadRestaurants',
+                transport:'loadTransport', budget:'loadBudget', calendar:'loadCalendar' };
   if (map[s]) window[map[s]]();
 }
 
@@ -274,6 +309,15 @@ async function loadDashboard() {
     fetchData('activities','date'), fetchData('expenses','date'),
   ]);
 
+  // Polaroid — náhodná fotka mimo prvních 5 v kariéře
+  const polaroidPool = TRIP_PHOTOS.length > 5 ? TRIP_PHOTOS.slice(5) : TRIP_PHOTOS;
+  const _pp = polaroidPool[Math.floor(Math.random() * polaroidPool.length)];
+  const polaroidPhoto = {
+    src: _pp.src || `https://images.unsplash.com/photo-${_pp.id}?w=400&auto=format&fit=crop&q=80`,
+    caption: _pp.caption,
+  };
+  const polaroidRotation = (-(Math.random() * 4 + 2)).toFixed(2); // vždy doleva, 2–6°
+
   const today      = new Date(); today.setHours(0,0,0,0);
   const departure  = new Date(CONFIG.DEPARTURE_DATE + 'T00:00:00');
   const returnDate = new Date(CONFIG.RETURN_DATE    + 'T00:00:00');
@@ -334,11 +378,12 @@ async function loadDashboard() {
   // To add photos: append to TRIP_PHOTOS at top of file.
   //   Unsplash:  { id: '1234567890-abcdef', caption: 'Popisek' }
   //   Vlastní:   { src: 'assets/foto.jpg',  caption: 'Popisek' }
-  const photosStripHtml = TRIP_PHOTOS.map(p => {
+  const photosStripHtml = TRIP_PHOTOS.map((p, i) => {
     const src = p.src
       ? p.src
       : `https://images.unsplash.com/photo-${p.id}?w=400&auto=format&fit=crop&q=80`;
-    return `<div class="dash-photo-item" style="background-image:url('${src}')">
+    return `<div class="dash-photo-item" style="background-image:url('${src}')"
+      onclick="openPhotoModal(${i})" role="button" tabindex="0">
       <div class="dash-photo-caption">${p.caption}</div>
     </div>`;
   }).join('');
@@ -420,6 +465,7 @@ async function loadDashboard() {
       <div class="dash-col dash-col-border dash-col-prep" style="background:var(--panel)">
         <div class="dash-col-title">
           <span class="dash-col-h2"><em>Stav</em> přípravy</span>
+          <span class="dash-col-link" onclick="navigateTo('priprava')">VŠE →</span>
         </div>
         ${prepItems}
         <div class="pull-quote-stats">
@@ -433,12 +479,16 @@ async function loadDashboard() {
           </div>
         </div>
       </div>
-      <div class="dash-col dash-col-alt">
-        <div class="pull-quote-eyebrow">Motto cesty</div>
-        <p class="pull-quote-text">„Jedeme oslavit, jak mládneme, a prožít budoucí nezapomenutelné vzpomínky."</p>
-        <div class="dash-todo">
-          <div class="dash-todo-title">K vyřízení</div>
-          <div class="dash-todo-empty">Žádné položky zatím nepřidány.</div>
+      <div class="dash-col dash-col-alt motto-col">
+        <div class="motto-eyebrow">Motto cesty</div>
+        <p class="motto-text">„Jedeme oslavit, jak mládneme, a prožít budoucí nezapomenutelné vzpomínky."</p>
+        <div class="motto-signature">M + L, podzim 2026</div>
+        <div class="polaroid-wrap">
+          <div class="polaroid" style="transform:rotate(${polaroidRotation}deg)">
+            <div class="polaroid-tape"></div>
+            <div class="polaroid-photo" style="background-image:url('${polaroidPhoto.src}')"></div>
+            <div class="polaroid-caption">Na co se těšíme</div>
+          </div>
         </div>
       </div>
     </div>
@@ -476,6 +526,107 @@ function photoNav(dir) {
   const itemW = Math.floor((strip.parentElement.offsetWidth - gap * (visCount - 1)) / visCount);
   strip.style.transform = `translateX(-${photoCurrent * (itemW + gap)}px)`;
   updatePhotoButtons();
+}
+
+/* ════ TODOS ════════════════════════════════════════════════ */
+function renderTodosHtml(todos) {
+  const itemsHtml = todos.map(t => `
+    <div class="todo-item${t.done ? ' done' : ''}" data-id="${t.id}">
+      <div class="todo-checkbox"><i class="ti ti-check todo-checkbox-icon"></i></div>
+      <span class="todo-text">${esc(t.text)}</span>
+      <button class="todo-delete" data-todo-delete="${t.id}" title="Smazat"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+  return `
+    ${todos.length
+      ? `<div class="todo-list">${itemsHtml}</div>`
+      : '<div class="dash-todo-empty">Žádné položky zatím nepřidány.</div>'}
+    <form class="todo-add-form" id="todo-add-form">
+      <input class="todo-add-input" id="todo-add-input" type="text" placeholder="Přidat úkol…" maxlength="200" autocomplete="off">
+      <button class="todo-add-btn" type="submit" title="Přidat">✓</button>
+    </form>`;
+}
+
+async function refreshTodos() {
+  const todos = await fetchData('todos', 'created_at');
+  const container = document.querySelector('.dash-todo');
+  if (!container) return;
+  container.innerHTML = `<div class="dash-todo-title">K vyřízení</div>${renderTodosHtml(todos)}`;
+}
+
+async function todoToggle(id, newDone) {
+  const item = document.querySelector(`.todo-item[data-id="${id}"]`);
+  if (item) item.classList.toggle('done', newDone);
+  const { error } = await db.from('todos').update({ done: newDone }).eq('id', id);
+  if (error) {
+    if (item) item.classList.toggle('done', !newDone);
+    showToast('Nepodařilo se uložit.', 'error');
+    return;
+  }
+  const cached = getCache('todos');
+  setCache('todos', cached.map(t => t.id === id ? { ...t, done: newDone } : t));
+}
+
+async function todoAdd(e) {
+  e.preventDefault();
+  const input = document.getElementById('todo-add-input');
+  const text = (input?.value || '').trim();
+  if (!text) return;
+  input.value = '';
+  input.disabled = true;
+  const { error } = await db.from('todos').insert({ text });
+  input.disabled = false;
+  if (error) { showToast('Nepodařilo se přidat úkol.', 'error'); return; }
+  await refreshTodos();
+  document.getElementById('todo-add-input')?.focus();
+}
+
+function todoStartEdit(textEl) {
+  if (textEl.querySelector('input')) return; // už editujeme
+  const currentText = textEl.textContent.trim();
+  const id = textEl.closest('.todo-item').dataset.id;
+  textEl.innerHTML = `<input class="todo-edit-input" type="text" value="${esc(currentText)}" maxlength="200">`;
+  const input = textEl.querySelector('input');
+  input.focus();
+  input.select();
+  const save = () => todoSaveEdit(id, textEl, input.value.trim(), currentText);
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { textEl.textContent = currentText; }
+  });
+}
+
+async function todoSaveEdit(id, textEl, newText, oldText) {
+  if (!newText || newText === oldText) { textEl.textContent = oldText; return; }
+  textEl.textContent = newText;
+  const { error } = await db.from('todos').update({ text: newText }).eq('id', id);
+  if (error) { textEl.textContent = oldText; showToast('Nepodařilo se uložit změnu.', 'error'); return; }
+  const cached = getCache('todos');
+  setCache('todos', cached.map(t => t.id === id ? { ...t, text: newText } : t));
+}
+
+async function todoDelete(id) {
+  const { error } = await db.from('todos').delete().eq('id', id);
+  if (error) { showToast('Nepodařilo se smazat úkol.', 'error'); return; }
+  await refreshTodos();
+}
+
+/* ════ PŘÍPRAVA ═════════════════════════════════════════════ */
+async function loadPriprava() {
+  const todos = await fetchData('todos', 'created_at');
+  const el = document.getElementById('priprava-content');
+  el.innerHTML = pageHeader({
+    num: 5, label: 'Příprava',
+    h1: 'Co vyřídit před odletem', accentWord: 'před odletem',
+    desc: 'Sdílený seznam úkolů pro nás oba',
+  }) + `
+  <div class="section-body">
+    <div class="priprava-todo-wrap">
+      <div class="dash-todo-title">K vyřízení</div>
+      ${renderTodosHtml(todos)}
+    </div>
+  </div>
+  ${tripFooter()}`;
 }
 
 /* ════ FLIGHTS ══════════════════════════════════════════════ */
@@ -1358,6 +1509,70 @@ function expensesForm(d) {
   </div>
   <div class="form-group"><label>Popis</label><input name="description" value="${esc(d.description||'')}"></div>
 </form>`; }
+
+/* ════ PHOTO LIGHTBOX ═══════════════════════════════════════ */
+let _lbIdx = 0;
+
+function openPhotoModal(idx) {
+  _lbIdx = idx;
+  let lb = document.getElementById('photo-lightbox');
+  if (!lb) {
+    lb = document.createElement('div');
+    lb.id = 'photo-lightbox';
+    lb.className = 'photo-lightbox';
+    lb.innerHTML = `
+      <div class="photo-lightbox-overlay" onclick="closePhotoModal()"></div>
+      <div class="photo-lightbox-inner">
+        <button class="photo-lightbox-close" onclick="closePhotoModal()">✕</button>
+        <div class="photo-lb-stage">
+          <button class="photo-lb-prev" onclick="lbNav(-1)">&#8249;</button>
+          <img class="photo-lightbox-img" id="photo-lb-img" src="" alt="">
+          <button class="photo-lb-next" onclick="lbNav(1)">&#8250;</button>
+        </div>
+        <div class="photo-lightbox-caption" id="photo-lb-caption"></div>
+      </div>`;
+    document.body.appendChild(lb);
+    document.addEventListener('keydown', _lbKeyHandler);
+  }
+  _lbRender();
+  lb.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function lbNav(dir) {
+  _lbIdx = (_lbIdx + dir + TRIP_PHOTOS.length) % TRIP_PHOTOS.length;
+  _lbRender();
+}
+
+function _lbKeyHandler(e) {
+  const lb = document.getElementById('photo-lightbox');
+  if (!lb || lb.style.display === 'none') return;
+  if (e.key === 'Escape')     closePhotoModal();
+  if (e.key === 'ArrowLeft')  lbNav(-1);
+  if (e.key === 'ArrowRight') lbNav(1);
+}
+
+function _lbRender() {
+  const p = TRIP_PHOTOS[_lbIdx];
+  const src = p.src
+    ? p.src
+    : `https://images.unsplash.com/photo-${p.id}?w=1400&auto=format&fit=crop&q=80`;
+  const largeSrc = src.includes('unsplash.com') ? src.replace('w=400', 'w=1400') : src;
+  const img = document.getElementById('photo-lb-img');
+  img.style.opacity = '0';
+  img.src = largeSrc;
+  img.onload = () => { img.style.opacity = '1'; };
+  document.getElementById('photo-lb-caption').textContent = p.caption;
+  const lb = document.getElementById('photo-lightbox');
+  lb.querySelector('.photo-lb-prev').style.opacity = _lbIdx === 0 ? '0.25' : '1';
+  lb.querySelector('.photo-lb-next').style.opacity = _lbIdx === TRIP_PHOTOS.length - 1 ? '0.25' : '1';
+}
+
+function closePhotoModal() {
+  const lb = document.getElementById('photo-lightbox');
+  if (lb) lb.style.display = 'none';
+  document.body.style.overflow = '';
+}
 
 /* ════ TOAST ════════════════════════════════════════════════ */
 function showToast(msg, type='info') {

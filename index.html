@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..500&family=DM+Sans:opsz,wght@9..40,300..700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..500&family=DM+Sans:opsz,wght@9..40,300..700&family=DM+Mono:wght@300;400;500&family=Caveat:wght@500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/tabler-icons.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -20,46 +20,64 @@
        LOGIN SCREEN
   ═══════════════════════════════════════════════════════ -->
   <div id="login-screen" class="login-screen">
-    <div class="login-split-left">
-      <div class="login-split-bg"></div>
-      <div class="login-split-overlay">
-        <div class="login-split-quote">
-          <div class="login-split-eyebrow">Korea &amp; Japonsko · 2026</div>
-          <div class="login-split-heading">Tři týdny mezi mořem a&nbsp;horami.</div>
-        </div>
-      </div>
+    <!-- Full-bleed photo -->
+    <div class="login-hero" style="background-image:url('assets/hero-login.jpg')"></div>
+    <div class="login-hero-overlay"></div>
+
+    <!-- Masthead -->
+    <div class="login-masthead">
+      <span class="login-masthead-left">
+        <span class="login-seal">朱</span>
+        <span>Cesta snů</span>
+      </span>
+      <span>Korea &amp; Japonsko · září 2026</span>
+      <span id="login-daybadge">Den −100</span>
     </div>
-    <div class="login-split-right">
-      <div class="login-card">
-        <div class="login-logo">✈️</div>
-        <h1 class="login-title">Přihlásit se</h1>
-        <p class="login-sub">Přístup k plánování cesty</p>
-        <form id="login-form" class="login-form" novalidate>
-          <div class="form-group">
-            <label for="login-email">E-mail</label>
-            <div class="input-wrapper">
-              <i class="ti ti-mail input-icon"></i>
-              <input type="email" id="login-email" name="email"
-                     placeholder="váš@email.cz" required autocomplete="email">
-            </div>
+
+    <!-- Editorial lockup (left bottom) -->
+    <div class="login-lockup">
+      <div class="login-lockup-eyebrow" id="login-eyebrow">Pomalu se chystáme</div>
+      <h1 class="login-lockup-h1">Tři týdny mezi <em>městy</em> a&nbsp;mořem</h1>
+      <p class="login-lockup-quote">„Jedeme oslavit, jak mládneme, a&nbsp;prožít budoucí nezapomenutelné vzpomínky."</p>
+    </div>
+
+    <!-- Form card (right, floating) -->
+    <div class="login-card-new">
+      <div class="login-card-eyebrow">Plán cesty · září 2026</div>
+      <h2 class="login-card-h2">Korea &amp; <em>Japonsko</em></h2>
+      <p class="login-card-sub" id="login-card-sub">100 dní do odjezdu · 8 měst · 23 dní</p>
+
+      <form id="login-form" class="login-form" novalidate>
+        <div class="form-group">
+          <label for="login-email">E-mail</label>
+          <div class="input-wrapper">
+            <i class="ti ti-mail input-icon"></i>
+            <input type="email" id="login-email" name="email"
+                   placeholder="váš@email.cz" required autocomplete="email">
           </div>
-          <div class="form-group">
-            <label for="login-password">Heslo</label>
-            <div class="input-wrapper">
-              <i class="ti ti-lock input-icon"></i>
-              <input type="password" id="login-password" name="password"
-                     placeholder="••••••••" required autocomplete="current-password">
-              <button type="button" class="btn-toggle-pass" id="toggle-pass-btn">
-                <i class="ti ti-eye" id="eye-icon"></i>
-              </button>
-            </div>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Heslo</label>
+          <div class="input-wrapper">
+            <i class="ti ti-lock input-icon"></i>
+            <input type="password" id="login-password" name="password"
+                   placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" class="btn-toggle-pass" id="toggle-pass-btn">
+              <i class="ti ti-eye" id="eye-icon"></i>
+            </button>
           </div>
-          <div id="login-error" class="login-error" style="display:none"></div>
-          <button type="submit" class="btn btn-primary btn-full" id="login-btn">
-            <span id="login-btn-text">Přihlásit se</span>
-            <i class="ti ti-arrow-right"></i>
-          </button>
-        </form>
+        </div>
+        <div id="login-error" class="login-error" style="display:none"></div>
+        <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+          <span id="login-btn-text">Přihlásit se</span>
+          <i class="ti ti-arrow-right"></i>
+        </button>
+      </form>
+
+      <div class="login-card-stats">
+        <span>23 dní</span><span>·</span>
+        <span>8 měst</span><span>·</span>
+        <span>2 země</span>
       </div>
     </div>
   </div>
@@ -92,17 +110,20 @@
         <li><a class="nav-item" data-section="activities">
           <span class="nav-num">四</span><span class="nav-text">Místa</span><span class="nav-bullet">●</span>
         </a></li>
-        <li><a class="nav-item" data-section="restaurants">
-          <span class="nav-num">五</span><span class="nav-text">Restaurace</span><span class="nav-bullet">●</span>
+        <li><a class="nav-item" data-section="priprava">
+          <span class="nav-num">五</span><span class="nav-text">Příprava</span><span class="nav-bullet">●</span>
         </a></li>
-        <li><a class="nav-item" data-section="transport">
-          <span class="nav-num">六</span><span class="nav-text">Jízdní řády</span><span class="nav-bullet">●</span>
+        <li style="display:none"><a class="nav-item" data-section="restaurants">
+          <span class="nav-num">六</span><span class="nav-text">Restaurace</span><span class="nav-bullet">●</span>
+        </a></li>
+        <li style="display:none"><a class="nav-item" data-section="transport">
+          <span class="nav-num">七</span><span class="nav-text">Jízdní řády</span><span class="nav-bullet">●</span>
         </a></li>
         <li><a class="nav-item" data-section="budget">
-          <span class="nav-num">七</span><span class="nav-text">Rozpočet</span><span class="nav-bullet">●</span>
+          <span class="nav-num">六</span><span class="nav-text">Rozpočet</span><span class="nav-bullet">●</span>
         </a></li>
         <li><a class="nav-item" data-section="calendar">
-          <span class="nav-num">八</span><span class="nav-text">Kalendář</span><span class="nav-bullet">●</span>
+          <span class="nav-num">七</span><span class="nav-text">Kalendář</span><span class="nav-bullet">●</span>
         </a></li>
       </ul>
 
@@ -130,6 +151,7 @@
       <section id="section-flights"        class="section"><div id="flights-content"></div></section>
       <section id="section-accommodations" class="section"><div id="accommodations-content"></div></section>
       <section id="section-activities"     class="section"><div id="activities-content"></div></section>
+      <section id="section-priprava"       class="section"><div id="priprava-content"></div></section>
       <section id="section-restaurants"    class="section"><div id="restaurants-content"></div></section>
       <section id="section-transport"      class="section"><div id="transport-content"></div></section>
       <section id="section-budget"         class="section"><div id="budget-content"></div></section>
@@ -143,8 +165,7 @@
       <a class="bnav-item" data-section="flights"><i class="ti ti-plane"></i><span>Cestování</span></a>
       <a class="bnav-item" data-section="accommodations"><i class="ti ti-bed"></i><span>Hotel</span></a>
       <a class="bnav-item" data-section="activities"><i class="ti ti-map-pin"></i><span>Výlety</span></a>
-      <a class="bnav-item" data-section="restaurants"><i class="ti ti-utensils"></i><span>Jídlo</span></a>
-      <a class="bnav-item" data-section="transport"><i class="ti ti-train"></i><span>Doprava</span></a>
+      <a class="bnav-item" data-section="priprava"><i class="ti ti-checklist"></i><span>Příprava</span></a>
       <a class="bnav-item" data-section="budget"><i class="ti ti-wallet"></i><span>Rozpočet</span></a>
       <a class="bnav-item" data-section="calendar"><i class="ti ti-calendar"></i><span>Kalendář</span></a>
     </nav>
