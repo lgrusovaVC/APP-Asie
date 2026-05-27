@@ -42,6 +42,11 @@ const TRIP_PHOTOS = [
   { src: 'assets/Busan-Gamcheon.jpg',       caption: 'Busan - Gamcheon' },
   { src: 'assets/Hiroshima-pamatnik.jpg',   caption: 'Hiroshima - památník' },
   { src: 'assets/Tokyo-Shibuya.jpg',        caption: 'Tokyo - Shibuya' },
+  { src: 'assets/Seoul-Korea.jpg',          caption: 'Noční Seoul' },  
+  { src: 'assets/Seoul-Tower.jpg',          caption: 'Seoul - Tower' },
+  { src: 'assets/Myajima-Torii.jpg',        caption: 'Myajima - Torii' },
+  { src: 'assets/Kyoto-Hagijasima.jpg',     caption: 'Kyoto - čtvrť Hagijašima' },
+  { src: 'assets/Osaka-Shinsekai.jpg',      caption: 'Osaka - Shinsekai' },
 ];
 
 const MAP_CITIES = [
