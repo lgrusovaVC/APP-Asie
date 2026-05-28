@@ -143,11 +143,13 @@ function setupAuthListeners() {
     }
   });
 
+  const EYE_SVG     = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const EYE_OFF_SVG = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
   document.getElementById('toggle-pass-btn').addEventListener('click', () => {
     const inp = document.getElementById('login-password');
     const ico = document.getElementById('eye-icon');
-    if (inp.type === 'password') { inp.type = 'text';     ico.className = 'ti ti-eye-off'; }
-    else                         { inp.type = 'password'; ico.className = 'ti ti-eye'; }
+    if (inp.type === 'password') { inp.type = 'text';     ico.innerHTML = EYE_OFF_SVG; }
+    else                         { inp.type = 'password'; ico.innerHTML = EYE_SVG; }
   });
 
   document.getElementById('logout-btn-sidebar').addEventListener('click', logout);
@@ -355,7 +357,7 @@ async function loadDashboard() {
   // Today formatted for masthead
   const CZ_DAYS = ['Ne','Po','Út','St','Čt','Pá','So'];
   const now = new Date();
-  const todayMasthead = `${CZ_DAYS[now.getDay()]} ${now.getDate()}. ${now.getMonth()+1}.`;
+  const todayMasthead = `${CZ_DAYS[now.getDay()]} ${now.getDate()}.${now.getMonth()+1}.`;
 
   // Days badge
   const daysSign = daysLeft >= 0 ? `-${daysLeft}` : `+${Math.abs(daysLeft)}`;
@@ -830,7 +832,7 @@ async function loadFlights() {
   }) + `<div class="section-body">
     ${data.length
       ? `<div class="flights-list">${data.map(flightCard).join('')}</div>`
-      : emptyState('ti-plane', 'Žádné letenky', 'Přidejte první letenku nebo transfer.')
+      : emptyState('ti-plane', 'Žádné letenky', 'Přidej první letenku nebo transfer.')
     }
   </div>
   ${tripFooter()}`;
@@ -927,7 +929,7 @@ async function loadAccommodations() {
   }) + `<div class="section-body">
     ${data.length
       ? `<div class="cards-grid">${data.map(accommodationCard).join('')}</div>`
-      : emptyState('ti-bed', 'Žádné ubytování', 'Přidejte první hotel nebo apartmán.')
+      : emptyState('ti-bed', 'Žádné ubytování', 'Přidej první hotel nebo apartmán.')
     }
   </div>
   ${tripFooter()}`;
@@ -1061,7 +1063,7 @@ function renderActivitiesFromCache() {
   document.getElementById('activities-content').innerHTML = header + filterBar + `<div class="section-body">
     ${filtered.length
       ? `<div class="activity-list">${filtered.map(activityCard).join('')}</div>`
-      : emptyState('ti-map-pin', 'Žádné aktivity', 'Přidejte výlet nebo aktivitu.')
+      : emptyState('ti-map-pin', 'Žádné aktivity', 'Přidej výlet nebo aktivitu.')
     }
   </div>
   ${tripFooter()}`;
@@ -1133,7 +1135,7 @@ function renderRestaurantsFromCache() {
   document.getElementById('restaurants-content').innerHTML = header + filterBar + `<div class="section-body">
     ${filtered.length
       ? `<div class="cards-grid">${filtered.map(restaurantCard).join('')}</div>`
-      : emptyState('ti-utensils', 'Žádné restaurace', 'Přidejte restauraci nebo kavárnu.')
+      : emptyState('ti-utensils', 'Žádné restaurace', 'Přidej restauraci nebo kavárnu.')
     }
   </div>
   ${tripFooter()}`;
@@ -1190,7 +1192,7 @@ async function loadTransport() {
         </thead>
         <tbody>${data.map(transportRow).join('')}</tbody>
       </table>
-    </div>` : emptyState('ti-train', 'Žádné spoje', 'Přidejte vlak, metro nebo autobus.')
+    </div>` : emptyState('ti-train', 'Žádné spoje', 'Přidej vlak, metro nebo autobus.')
     }
   </div>
   ${tripFooter()}`;
@@ -1469,8 +1471,7 @@ async function loadCalendar() {
     accentWord: 'kdy',
     desc: 'Vyber den a podívej se, co máme v plánu',
     stats: [],
-  }) + `<div class="section-body"><div id="cal-root" class="cal-root"></div></div>
-  ${tripFooter()}`;
+  }) + `<div class="section-body"><div id="cal-root" class="cal-root"></div></div>${tripFooter()}`;
 
   const [flights, accs, acts, trans] = await Promise.all([
     fetchData('flights','date'),
@@ -1501,9 +1502,11 @@ function buildCalEventMap(flights, accs, acts, trans) {
     if (!a.checkin || !a.checkout) return;
     let d = new Date(a.checkin + 'T00:00:00');
     const end = new Date(a.checkout + 'T00:00:00');
+    const localKey = dt => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    const checkoutEve = localKey(new Date(end.getTime() - 86400000));
     while (d < end) {
-      const key = d.toISOString().slice(0,10);
-      const sub = key === a.checkin ? 'Check-in' : (key === new Date(new Date(a.checkout).getTime()-86400000).toISOString().slice(0,10) ? 'Check-out' : null);
+      const key = localKey(d);
+      const sub = key === a.checkin ? 'Check-in' : key === checkoutEve ? 'Check-out' : null;
       add(key, 'accommodation', esc(a.name), 'ti-bed', sub);
       d.setDate(d.getDate()+1);
     }
@@ -1806,13 +1809,13 @@ function emptyState(icon, title, sub) {
 
 function tripFooter() {
   return `<div class="dash-footer">
-    <span>★</span>
-    <span>Seoul 4n</span><span>·</span>
-    <span>Gyeongju 1n</span><span>·</span>
-    <span>Busan 4n</span><span>·</span>
-    <span>Hiroshima 2n</span><span>·</span>
-    <span>Kyoto 4n</span><span>·</span>
-    <span>Tokyo 6n</span>
+    <span class="footer-star">★</span>
+    <span>Seoul<span class="footer-nights"> 4n</span></span><span>·</span>
+    <span>Gyeongju<span class="footer-nights"> 1n</span></span><span>·</span>
+    <span>Busan<span class="footer-nights"> 4n</span></span><span>·</span>
+    <span>Hiroshima<span class="footer-nights"> 2n</span></span><span>·</span>
+    <span>Kyoto<span class="footer-nights"> 4n</span></span><span>·</span>
+    <span>Tokyo<span class="footer-nights"> 6n</span></span>
   </div>`;
 }
 
