@@ -25,6 +25,14 @@ const SECTION_TITLES = {
 const CAT_ICONS = { 'Letenky':'✈️','Ubytování':'🏨','Aktivity':'🗺️','Jídlo':'🍜','Doprava':'🚆','Ostatní':'💳' };
 const CAT_COLORS = { 'Letenky':'#C73A1A','Ubytování':'#1A55A0','Aktivity':'#2A7A3A','Jídlo':'#8A6200','Doprava':'#6B3FA0','Ostatní':'#7A7268' };
 
+const _S = (p) => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const PRIP_CATS = [
+  { name: 'Ubytování', svg: _S('<rect x="2" y="8" width="20" height="12"/><path d="M2 14h20M8 8V6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>') },
+  { name: 'Cestování', svg: _S('<path d="M16 10h4a2 2 0 0 1 0 4h-4l-4 7H9l2-7H7L5 16H3l2-4-2-4h2l2 2h4L13 3h3z"/>') },
+  { name: 'Ostatní',   svg: _S('<rect x="5" y="2" width="14" height="20"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/>') },
+];
+const _normPripCat = c => (c === 'Doklady & pojištění' || c === 'Finance') ? 'Ostatní' : (c || 'Ostatní');
+
 const ITINERARY = [
   { d1: 'So 5.9.',  d2: 'St 9.9.',   nights: 4, city: 'Seoul',    country: 'Korea',    tag: 'budha, Sogeumsan bridge'    },
   { d1: 'St 9.9.',  d2: 'Čt 10.9.',  nights: 1, city: 'Gyeongju',    country: 'Korea',    tag: 'Bulguksa temple'       },
@@ -188,16 +196,28 @@ function setupNavigation() {
     const filterBtn = e.target.closest('.filter-btn');
     if (filterBtn) handleFilterClick(filterBtn);
 
-    // Todos
+    // Todos (dashboard)
     const delBtn = e.target.closest('[data-todo-delete]');
     if (delBtn) { e.stopPropagation(); todoDelete(delBtn.dataset.todoDelete); return; }
     const todoItem = e.target.closest('.todo-item');
     if (todoItem?.dataset.id && !e.target.closest('.todo-text')) {
       todoToggle(todoItem.dataset.id, !todoItem.classList.contains('done'));
     }
+    // Příprava — toggle jen na checkboxu, text spustí editaci
+    const delPrip = e.target.closest('[data-prip-delete]');
+    if (delPrip) { e.stopPropagation(); pripDelete(delPrip.dataset.pripDelete); return; }
+    const pripCb = e.target.closest('.priprava-cb');
+    if (pripCb) {
+      const pi = pripCb.closest('.priprava-item');
+      if (pi?.dataset.id) { e.stopPropagation(); pripToggle(pi.dataset.id, !pi.classList.contains('done')); }
+      return;
+    }
+    const pripTxt = e.target.closest('.priprava-item-text');
+    if (pripTxt && !pripTxt.querySelector('input')) { e.stopPropagation(); pripStartEdit(pripTxt); }
   });
   document.addEventListener('submit', (e) => {
     if (e.target.id === 'todo-add-form') todoAdd(e);
+    if (e.target.id === 'priprava-add-form') pripAdd(e);
   });
   document.addEventListener('dblclick', (e) => {
     const textEl = e.target.closest('.todo-text');
@@ -552,6 +572,7 @@ function renderTodosHtml(todos) {
 }
 
 async function refreshTodos() {
+  if (currentSection === 'priprava') { await loadPriprava(); return; }
   const todos = await fetchData('todos', 'created_at');
   const container = document.querySelector('.dash-todo');
   if (!container) return;
@@ -588,7 +609,7 @@ async function todoAdd(e) {
 function todoStartEdit(textEl) {
   if (textEl.querySelector('input')) return; // už editujeme
   const currentText = textEl.textContent.trim();
-  const id = textEl.closest('.todo-item').dataset.id;
+  const id = (textEl.closest('.todo-item') || textEl.closest('.priprava-item')).dataset.id;
   textEl.innerHTML = `<input class="todo-edit-input" type="text" value="${esc(currentText)}" maxlength="200">`;
   const input = textEl.querySelector('input');
   input.focus();
@@ -620,18 +641,180 @@ async function todoDelete(id) {
 async function loadPriprava() {
   const todos = await fetchData('todos', 'created_at');
   const el = document.getElementById('priprava-content');
-  el.innerHTML = pageHeader({
-    num: 5, label: 'Příprava',
-    h1: 'Co vyřídit před odletem', accentWord: 'před odletem',
-    desc: 'Sdílený seznam úkolů pro nás oba',
-  }) + `
-  <div class="section-body">
-    <div class="priprava-todo-wrap">
-      <div class="dash-todo-title">K vyřízení</div>
-      ${renderTodosHtml(todos)}
+
+  const total = todos.length;
+  const done = todos.filter(t => t.done).length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  const daysLeft = Math.max(0, Math.ceil((new Date(CONFIG.DEPARTURE_DATE) - new Date()) / 86400000));
+  const activeCats = PRIP_CATS.filter(c => todos.some(t => (t.category || 'Ostatní') === c.name)).length || PRIP_CATS.length;
+
+  const statsHtml = `
+  <div class="priprava-stats">
+    <div class="priprava-stat">
+      <span class="priprava-stat-val">${done}/${total}</span>
+      <span class="priprava-stat-label">Hotovo</span>
     </div>
-  </div>
-  ${tripFooter()}`;
+    <div class="priprava-stat">
+      <span class="priprava-stat-val accent">${pct}%</span>
+      <span class="priprava-stat-label">Připraveno</span>
+    </div>
+    <div class="priprava-stat">
+      <span class="priprava-stat-val">${daysLeft}</span>
+      <span class="priprava-stat-label">Dní do odjezdu</span>
+    </div>
+    <div class="priprava-stat">
+      <span class="priprava-stat-val">${activeCats}</span>
+      <span class="priprava-stat-label">Kategorie</span>
+    </div>
+  </div>`;
+
+  const gridHtml = `
+  <div class="priprava-grid">
+    ${PRIP_CATS.map(cat => {
+      const catItems = todos.filter(t => _normPripCat(t.category) === cat.name);
+      const catDone = catItems.filter(t => t.done).length;
+      const catPct = catItems.length ? Math.round(catDone / catItems.length * 100) : 0;
+      return `
+      <div class="priprava-cat">
+        <div class="priprava-cat-head">
+          <span class="priprava-cat-icon">${cat.svg}</span>
+          <span class="priprava-cat-name">${cat.name}</span>
+          <span class="priprava-cat-count">${catDone} / ${catItems.length}</span>
+        </div>
+        <div class="priprava-cat-bar-wrap">
+          <div class="priprava-cat-bar" style="width:${catPct}%"></div>
+        </div>
+        <div class="priprava-items">
+          ${catItems.length
+            ? catItems.map(t => `
+              <div class="priprava-item${t.done ? ' done' : ''}" data-id="${t.id}" data-cat="${esc(t.category || 'Ostatní')}">
+                <div class="priprava-cb"><i class="priprava-cb-icon">✓</i></div>
+                <span class="priprava-item-text">${esc(t.text)}</span>
+                <button class="priprava-item-del" data-prip-delete="${t.id}" title="Smazat">✕</button>
+              </div>`).join('')
+            : ''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  const addBarHtml = `
+  <form class="priprava-add-bar" id="priprava-add-form">
+    <input class="priprava-add-input" id="priprava-add-input" type="text"
+      placeholder='Přidat další úkol k vyřízení' maxlength="200" autocomplete="off">
+    <select class="priprava-add-cat" id="priprava-add-cat">
+      ${PRIP_CATS.map(c => `<option value="${c.name}">${c.name}</option>`).join('')}
+    </select>
+    <button class="priprava-add-btn" type="submit">+ Přidat</button>
+  </form>`;
+
+  el.innerHTML =
+    pageHeader({
+      num: 5, label: 'Příprava',
+      h1: 'Co vyřídit před odletem', accentWord: 'před odletem',
+      desc: 'Tohle odškrtáme, ať už můžeme balit batohy',
+    }) +
+    `<div class="section-body priprava-section-body">${statsHtml}${gridHtml}${addBarHtml}</div>` +
+    tripFooter();
+}
+
+async function pripToggle(id, newDone) {
+  const item = document.querySelector(`.priprava-item[data-id="${id}"]`);
+  if (item) item.classList.toggle('done', newDone);
+  const { error } = await db.from('todos').update({ done: newDone }).eq('id', id);
+  if (error) {
+    if (item) item.classList.toggle('done', !newDone);
+    showToast('Nepodařilo se uložit.', 'error');
+    return;
+  }
+  const cached = getCache('todos');
+  setCache('todos', cached.map(t => t.id === id ? { ...t, done: newDone } : t));
+  _refreshPripStats();
+}
+
+function _refreshPripStats() {
+  const todos = getCache('todos');
+  const total = todos.length;
+  const done = todos.filter(t => t.done).length;
+  const pct = total ? Math.round(done / total * 100) : 0;
+  const statVals = document.querySelectorAll('.priprava-stat-val');
+  if (statVals[0]) statVals[0].textContent = `${done}/${total}`;
+  if (statVals[1]) statVals[1].textContent = `${pct}%`;
+  PRIP_CATS.forEach((cat, i) => {
+    const catItems = todos.filter(t => _normPripCat(t.category) === cat.name);
+    const catDone = catItems.filter(t => t.done).length;
+    const catPct = catItems.length ? Math.round(catDone / catItems.length * 100) : 0;
+    const bars = document.querySelectorAll('.priprava-cat-bar');
+    const counts = document.querySelectorAll('.priprava-cat-count');
+    if (bars[i]) bars[i].style.width = `${catPct}%`;
+    if (counts[i]) counts[i].textContent = `${catDone} / ${catItems.length}`;
+  });
+}
+
+async function pripDelete(id) {
+  const { error } = await db.from('todos').delete().eq('id', id);
+  if (error) { showToast('Nepodařilo se smazat.', 'error'); return; }
+  await loadPriprava();
+}
+
+async function pripAdd(e) {
+  e.preventDefault();
+  const input = document.getElementById('priprava-add-input');
+  const catEl = document.getElementById('priprava-add-cat');
+  const text = (input?.value || '').trim();
+  const category = catEl?.value || 'Ostatní';
+  if (!text) return;
+  input.value = '';
+  input.disabled = true;
+  const { error } = await db.from('todos').insert({ text, category });
+  input.disabled = false;
+  if (error) { showToast('Nepodařilo se přidat úkol.', 'error'); return; }
+  await loadPriprava();
+  document.getElementById('priprava-add-input')?.focus();
+}
+
+function pripStartEdit(textEl) {
+  if (textEl.querySelector('input')) return;
+  const currentText = textEl.textContent.trim();
+  const item = textEl.closest('.priprava-item');
+  const id = item.dataset.id;
+  const currentCat = item.dataset.cat || 'Ostatní';
+
+  textEl.style.cssText = 'display:flex;align-items:center;gap:8px;flex:1';
+  textEl.innerHTML = `
+    <input class="todo-edit-input" type="text" value="${esc(currentText)}" maxlength="200" style="flex:1;min-width:0">
+    <select class="prip-edit-cat">
+      ${PRIP_CATS.map(c => `<option value="${c.name}"${c.name === currentCat ? ' selected' : ''}>${c.name}</option>`).join('')}
+    </select>`;
+
+  const input = textEl.querySelector('input');
+  const select = textEl.querySelector('select');
+  input.focus(); input.select();
+
+  const reset = () => { textEl.style.cssText = ''; };
+  let saved = false;
+  const save = async () => {
+    if (saved) return; saved = true;
+    const newText = input.value.trim() || currentText;
+    const newCat  = select.value;
+    reset(); textEl.textContent = newText; item.dataset.cat = newCat;
+    const updates = {};
+    if (newText !== currentText) updates.text = newText;
+    if (newCat  !== currentCat)  updates.category = newCat;
+    if (!Object.keys(updates).length) return;
+    const { error } = await db.from('todos').update(updates).eq('id', id);
+    if (error) { textEl.textContent = currentText; item.dataset.cat = currentCat; showToast('Nepodařilo se uložit.', 'error'); return; }
+    const cached = getCache('todos');
+    setCache('todos', cached.map(t => t.id === id ? { ...t, ...updates } : t));
+    if (updates.category) loadPriprava();
+  };
+  const checkBlur = () => setTimeout(() => { if (!textEl.contains(document.activeElement)) save(); }, 120);
+  input.addEventListener('blur',  checkBlur);
+  select.addEventListener('blur', checkBlur);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter')  { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { saved = true; reset(); textEl.textContent = currentText; }
+  });
 }
 
 /* ════ FLIGHTS ══════════════════════════════════════════════ */
@@ -863,7 +1046,7 @@ function renderActivitiesFromCache() {
   const header = pageHeader({
     num: 4, label: 'Místa',
     h1: 'Důvody vstávat brzo', accentWord: 'vstávat',
-    desc: 'Chrámy, výlety, příroda. Vše co stojí za brzké vstávání.',
+    desc: 'Chrámy, výlety, příroda — vše co stojí za brzké vstávání',
     stats: [{ value: `${data.length}`, label: 'zážitků' }],
     addSection: 'activities', addLabel: 'Přidat aktivitu',
   });
@@ -936,7 +1119,7 @@ function renderRestaurantsFromCache() {
   const header = pageHeader({
     num: 5, label: 'Restaurace',
     h1: 'Sto chutí Asie.', accentWord: 'chutí',
-    desc: 'Od pouličního pojang-macha v Seule po sushi omakase v Tokiu.',
+    desc: 'Od pouličního pojang-macha v Seule po sushi omakase v Tokiu',
     stats: [{ value: `${data.length}`, label: 'míst' }],
     addSection: 'restaurants', addLabel: 'Přidat restauraci',
   });
@@ -982,7 +1165,7 @@ async function loadTransport() {
   el.innerHTML = pageHeader({
     num: 6, label: 'Jízdní řády',
     h1: 'Vlakem, lodí, shinkansenem.', accentWord: 'lodí',
-    desc: 'Vlaky, autobusy, trajekty — doprava na místě.',
+    desc: 'Vlaky, autobusy, trajekty — doprava na místě',
     stats: [
       { value: `${data.length}`, label: 'spojů' },
       { value: `${formatKc(data.reduce((s,t)=>s+parseFloat(t.price||0),0))} Kč`, label: 'cena dopravy' },
@@ -1096,7 +1279,7 @@ function renderBudget(expenses) {
   el.innerHTML = pageHeader({
     num: 7, label: 'Rozpočet',
     h1: budgetHeadline.text, accentWord: budgetHeadline.accent,
-    desc: `Celkem ${formatKc(total)} Kč na ${Math.ceil((new Date(CONFIG.RETURN_DATE)-new Date(CONFIG.DEPARTURE_DATE))/86400000)} dní.`,
+    desc: `Celkem ${formatKc(total)} Kč na ${Math.ceil((new Date(CONFIG.RETURN_DATE)-new Date(CONFIG.DEPARTURE_DATE))/86400000)} dní`,
     stats: [
       { value: `${formatKc(total)} Kč`, label: 'celkový rozpočet' },
       { value: `${formatKc(spent)} Kč`, label: 'utraceno' },
@@ -1282,9 +1465,9 @@ async function loadCalendar() {
   const el = document.getElementById('calendar-content');
   el.innerHTML = pageHeader({
     num: 8, label: 'Kalendář',
-    h1: 'Co se kdy děje.',
+    h1: 'Co se kdy děje',
     accentWord: 'kdy',
-    desc: 'Kliknutím na den zobrazíte vše naplánované',
+    desc: 'Vyber den a podívej se, co máme v plánu',
     stats: [],
   }) + `<div class="section-body"><div id="cal-root" class="cal-root"></div></div>
   ${tripFooter()}`;
@@ -1340,8 +1523,8 @@ function renderCalendarMonth() {
   const root = document.getElementById('cal-root');
   if (!root) return;
 
-  const MONTHS = ['Leden','Únor','Březen','Duben','Květen','Červen',
-                   'Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+  const MONTH_TITLE = 'Září';
+  const MONTH_GEN   = 'září';
   const DAYS = ['Po','Út','St','Čt','Pá','So','Ne'];
 
   const firstDay = new Date(calYear, calMonth, 1);
@@ -1359,7 +1542,7 @@ function renderCalendarMonth() {
     const types   = [...new Set(events.map(e => e.type))];
     const dots    = types.map(t => `<span class="cal-dot cal-dot-${t}"></span>`).join('');
     cells += `<div class="cal-day${inTrip?' in-trip':''}${isSel?' selected':''}${events.length?' has-events':''}"
-      onclick="calSelectDay('${dateStr}')">
+      ${inTrip ? `onclick="calSelectDay('${dateStr}')"` : ''}>
       <span class="cal-day-num">${d}</span>
       ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
     </div>`;
@@ -1369,7 +1552,7 @@ function renderCalendarMonth() {
   if (calSelectedDay) {
     const events = calEventMap[calSelectedDay] || [];
     const d = new Date(calSelectedDay + 'T00:00:00');
-    const dayLabel = `${d.getDate()}. ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    const dayLabel = `${d.getDate()}. ${MONTH_GEN} ${d.getFullYear()}`;
     const TYPE_LABELS = { flight:'Cestování', accommodation:'Ubytování', activity:'Výlet', transport:'Doprava' };
     if (events.length) {
       const items = events.map(e => `
@@ -1388,7 +1571,7 @@ function renderCalendarMonth() {
   }
 
   root.innerHTML = `
-    <div class="cal-month-title">${MONTHS[calMonth]} ${calYear}</div>
+    <div class="cal-month-title">${MONTH_TITLE} ${calYear}</div>
     <div class="cal-weekdays">${DAYS.map(d=>`<div class="cal-weekday">${d}</div>`).join('')}</div>
     <div class="cal-grid">${cells}</div>
     ${detail}`;

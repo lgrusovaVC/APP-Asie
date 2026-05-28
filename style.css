@@ -378,6 +378,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .page-desc {
   font-family: var(--serif); font-style: italic;
   font-size: 16px; color: var(--ink2); line-height: 1.5;
+  text-align: right;
 }
 
 /* Stats strip below page header */
@@ -714,12 +715,13 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   color: var(--ink3); letter-spacing: .1em; text-transform: uppercase;
 }
 
-/* Dashboard footer */
+/* Trip footer — all pages */
 .dash-footer {
-  padding: 14px 40px; display: flex; gap: 20px; align-items: center;
+  margin-top: auto;
+  padding: 16px 40px; display: flex; gap: 20px; align-items: center;
   font-family: var(--mono); font-size: 10px; letter-spacing: .16em;
   color: var(--ink3); text-transform: uppercase;
-  border-bottom: 1px solid var(--rule);
+  border-top: 1px solid var(--rule);
 }
 .dash-footer-edit { margin-left: auto; color: var(--acc); cursor: pointer; }
 
@@ -768,9 +770,6 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 }
 .activity-card:hover .activity-edit-btn { opacity: 1; color: var(--acc); }
 
-#flights-content .page-desc,
-#accommodations-content .page-desc,
-#activities-content .page-desc { text-align: right; }
 
 .flight-card {
   display: grid; grid-template-columns: 220px 1fr;
@@ -953,14 +952,28 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .hotel-row-empty { visibility: hidden; }
 .hotel-row-date { font-size: 14px; font-weight: 600; color: var(--ink); }
 .hotel-row-notes span { font-style: italic; }
-#section-accommodations.active, #section-dashboard.active { display: flex; flex-direction: column; min-height: 100dvh; }
+#section-accommodations.active, #section-dashboard.active,
+#section-flights.active, #section-activities.active,
+#section-priprava.active, #section-budget.active,
+#section-calendar.active { display: flex; flex-direction: column; min-height: 100dvh; }
+
 #section-accommodations #accommodations-content,
-#section-dashboard #dashboard-content { display: flex; flex-direction: column; flex: 1; }
-#accommodations-content .section-body { flex: 1; }
-#dashboard-content .dash-footer { margin-top: auto; }
+#section-dashboard #dashboard-content,
+#section-flights #flights-content,
+#section-activities #activities-content,
+#section-priprava #priprava-content,
+#section-budget #budget-content,
+#section-calendar #calendar-content { display: flex; flex-direction: column; flex: 1; }
+
+#accommodations-content .section-body,
+#flights-content .section-body,
+#activities-content .section-body,
+#priprava-content .section-body,
+#budget-content .section-body,
+#calendar-content .section-body { flex: 1; }
+
 #accommodations-content .cards-grid { gap: 16px; border: none; }
 #accommodations-content .hotel-name { color: var(--sb-accent); }
-#accommodations-content .dash-footer { border-top: 1px solid var(--rule); border-bottom: none; }
 
 /* ══════════════════════════════════════════════════════════════
    TRANSPORT — TABLE
@@ -1331,8 +1344,9 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   display: flex; flex-direction: column; align-items: center; gap: 5px;
   cursor: pointer; transition: background var(--transition), border-color var(--transition);
 }
-.cal-day:hover { background: var(--alt); }
-.cal-day.in-trip { background: rgba(207,58,42,.04); }
+.cal-day { cursor: default; }
+.cal-day.in-trip { background: rgba(207,58,42,.04); cursor: pointer; }
+.cal-day.in-trip:hover { background: var(--alt); }
 .cal-day.selected { border-color: var(--acc); background: rgba(207,58,42,.07); }
 .cal-day.other-month { opacity: 0; pointer-events: none; }
 .cal-day-num {
@@ -1488,7 +1502,136 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .dash-photo-item { cursor: zoom-in; }
 
 /* ── Příprava stránka ─────────────────────────────────────── */
-.priprava-todo-wrap { max-width: 560px; }
+
+/* Stats strip */
+.priprava-section-body { padding-top: 12px; }
+.priprava-stats {
+  display: flex; border-bottom: 1px solid var(--rule);
+  margin-bottom: 36px; overflow-x: auto;
+}
+.priprava-stat {
+  padding: 20px 28px; border-right: 1px solid var(--rule);
+}
+.priprava-stat:first-child { padding-left: 0; }
+.priprava-stat:last-child { border-right: none; }
+.priprava-stat-val {
+  font-family: var(--serif); font-size: 24px; font-weight: 400;
+  letter-spacing: -.01em;
+  color: var(--ink); display: block; margin-bottom: 5px; line-height: 1;
+}
+.priprava-stat-val.accent { color: var(--acc); }
+.priprava-stat-label {
+  font-family: var(--mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: .18em;
+  color: var(--ink3);
+}
+
+/* Category grid */
+.priprava-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 32px;
+}
+.priprava-cat { padding-bottom: 28px; }
+.priprava-cat-head {
+  display: flex; align-items: baseline; gap: 10px; padding-bottom: 6px;
+}
+.priprava-cat-icon {
+  flex-shrink: 0; color: var(--acc);
+  display: flex; align-items: center;
+}
+.priprava-cat-name {
+  font-family: var(--serif); font-size: 24px; color: var(--ink);
+  flex: 1; line-height: 1;
+}
+.priprava-cat-count {
+  font-family: var(--mono); font-size: 11px; color: var(--ink3);
+  white-space: nowrap; flex-shrink: 0; letter-spacing: .05em;
+}
+.priprava-cat-bar-wrap {
+  height: 2px; background: var(--rule); margin-bottom: 12px;
+}
+.priprava-cat-bar {
+  height: 2px; background: var(--acc); min-width: 0;
+  transition: width .4s ease;
+}
+
+/* Items */
+.priprava-items { display: flex; flex-direction: column; }
+.priprava-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--rule);
+  user-select: none;
+}
+.priprava-cb { cursor: pointer; }
+.priprava-item:first-child { border-top: 1px solid var(--rule); }
+.priprava-cb {
+  flex-shrink: 0; width: 14px; height: 14px;
+  border: 1.5px solid var(--rule); background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--transition);
+}
+.priprava-item.done .priprava-cb { background: var(--acc); border-color: var(--acc); }
+.priprava-cb-icon {
+  font-size: 8px; color: #fff; opacity: 0;
+  font-style: normal; line-height: 1; font-family: var(--sans);
+}
+.priprava-item.done .priprava-cb-icon { opacity: 1; }
+.priprava-item-text {
+  flex: 1; font-size: 13px; color: var(--ink); line-height: 1.4;
+  cursor: text; text-underline-offset: 3px;
+}
+.priprava-item-text:hover { text-decoration: underline dotted var(--ink3); }
+.prip-edit-cat {
+  background: none; border: none; border-bottom: 1px solid var(--acc);
+  color: var(--ink3); font-family: var(--sans); font-size: 11px;
+  outline: none; cursor: pointer; flex-shrink: 0; padding: 0 2px;
+}
+.priprava-item.done .priprava-item-text {
+  color: var(--acc); text-decoration: line-through; text-decoration-color: var(--acc);
+}
+.priprava-item-del {
+  flex-shrink: 0; opacity: 0; background: none; border: none;
+  cursor: pointer; color: var(--ink3); padding: 2px;
+  font-size: .85rem; line-height: 1; transition: all var(--transition);
+}
+.priprava-item:hover .priprava-item-del { opacity: .4; }
+.priprava-item-del:hover { opacity: 1 !important; color: var(--acc); }
+
+/* Add bar (inline, below grid) */
+.priprava-add-bar {
+  margin-top: 32px;
+  border: 1px solid var(--rule);
+  padding: 12px 20px;
+  display: flex; gap: 12px; align-items: center;
+  background: #fff;
+}
+.priprava-add-input {
+  flex: 1; padding: 0;
+  background: transparent; border: none;
+  color: var(--ink); font-family: var(--sans); font-size: 13px;
+  outline: none;
+}
+.priprava-add-input::placeholder { color: var(--ink3); font-size: 13px; }
+.priprava-add-cat {
+  padding: 0 4px; background: transparent; border: none;
+  color: var(--ink3); font-family: var(--sans); font-size: 12px;
+  outline: none; cursor: pointer; flex-shrink: 0; max-width: 140px;
+  margin-right: 20px;
+}
+.priprava-add-btn {
+  flex-shrink: 0; padding: 0;
+  background: transparent; color: var(--acc); border: none;
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  letter-spacing: .12em; text-transform: uppercase; cursor: pointer;
+  white-space: nowrap; transition: opacity var(--transition);
+}
+.priprava-add-btn:hover { opacity: .65; }
+
+@media (max-width: 768px) {
+  .priprava-grid { grid-template-columns: 1fr; gap: 0; }
+  .priprava-add-cat { max-width: 110px; }
+  .priprava-stat { padding: 16px 18px; }
+  .priprava-stat:first-child { padding-left: 16px; }
+}
 
 /* ══════════════════════════════════════════════════════════════
    TODOS (K vyřízení — dashboard)
