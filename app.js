@@ -1583,6 +1583,12 @@ function renderCalendarMonth() {
 function calSelectDay(dateStr) {
   calSelectedDay = calSelectedDay === dateStr ? null : dateStr;
   renderCalendarMonth();
+  if (calSelectedDay) {
+    requestAnimationFrame(() => {
+      const detail = document.querySelector('.cal-detail');
+      if (detail) detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 }
 
 function flightsForm(d) { return `<form class="modal-form">

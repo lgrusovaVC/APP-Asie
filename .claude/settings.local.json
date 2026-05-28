@@ -8,7 +8,8 @@
       "Bash(npm pack *)",
       "PowerShell($css = Invoke-WebRequest -Uri \"https://unpkg.com/@tabler/icons-webfont@3.11.0/tabler-icons.min.css\" -UseBasicParsing; $css.StatusCode)",
       "PowerShell($r = Invoke-WebRequest -Uri \"https://unpkg.com/@tabler/icons-webfont@3.11.0/\" -UseBasicParsing; $r.Content | Select-String \"\\\\.css\" | Select-Object -First 20)",
-      "PowerShell($css = Invoke-WebRequest -Uri \"https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css\" -UseBasicParsing; $css.StatusCode; $css.Content.Substring\\(0, 300\\))"
+      "PowerShell($css = Invoke-WebRequest -Uri \"https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css\" -UseBasicParsing; $css.StatusCode; $css.Content.Substring\\(0, 300\\))",
+      "Bash(awk -F: '$2 > 1255')"
     ]
   }
 }
