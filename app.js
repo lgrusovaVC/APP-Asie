@@ -658,7 +658,7 @@ async function loadPriprava() {
     </div>
     <div class="priprava-stat">
       <span class="priprava-stat-val accent">${pct}%</span>
-      <span class="priprava-stat-label">Připraveno</span>
+      <span class="priprava-stat-label">Zařízeno</span>
     </div>
     <div class="priprava-stat">
       <span class="priprava-stat-val">${daysLeft}</span>
@@ -1129,7 +1129,10 @@ function activityCard(a) {
       ${a.date ? `<div class="activity-date">${shortDateNoYear(a.date)}</div>` : ''}
       ${a.time ? `<div class="activity-time">${a.time.slice(0,5)}</div>` : ''}
     </div>
-    ${a.photo_url ? `<div class="activity-photo" style="background-image:url('${esc(a.photo_url)}')"></div>` : ''}
+    ${a.photo_url ? `<div class="activity-photo-col">
+      <div class="activity-badges"><span class="badge ${cls}">${label}</span></div>
+      <div class="activity-photo" style="background-image:url('${esc(a.photo_url)}')"></div>
+    </div>` : ''}
     <div class="activity-main">
       <div class="activity-name">
         ${a.url ? `<a href="${esc(a.url)}" target="_blank" rel="noopener" class="activity-name-link">${esc(a.name)}</a>` : esc(a.name)}
@@ -1143,9 +1146,7 @@ function activityCard(a) {
         ${hasPrice ? `Cena ${formatKc(a.price)} Kč` : '—'}
       </div>
     </div>
-    <div class="activity-badges">
-      <span class="badge ${cls}">${label}</span>
-    </div>
+    ${!a.photo_url ? `<div class="activity-badges"><span class="badge ${cls}">${label}</span></div>` : ''}
     <button class="activity-edit-btn" onclick="openEditModal('activities','${a.id}')" title="Upravit">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
