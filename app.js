@@ -973,7 +973,7 @@ async function loadAccommodations() {
     num: 3, label: 'Ubytování',
     h1: nights > 0 ? `${nights} ${nocForm} na cestě` : 'Hotel, hostel, ryokan.',
     accentWord: nights > 0 ? `${nights}` : 'ryokan',
-    desc: 'Seznam ubytování na naší cestě',
+    desc: 'Naše dočasné asijské domovy',
     stats: [
       { value: `${nights}`, label: 'nocí celkem' },
       { value: `${formatKc(totalCost)} Kč`, label: 'cena celkem' },
@@ -1036,32 +1036,27 @@ function accommodationCard(a) {
       <div class="hotel-hero-overlay"></div>
       <div class="hotel-hero-info">
         ${nights ? `<span class="hotel-nights-badge">${accomNocLabel(nights)}</span>` : '<span></span>'}
-        <div class="hotel-action-btns">
-          <button class="btn-icon delete" onclick="confirmDelete('accommodations','${a.id}')" title="Smazat"><i class="ti ti-trash"></i></button>
-        </div>
+        <div class="hotel-action-btns"><span class="hotel-country-hero">${countryBadge(a.country)}</span></div>
+      </div>
+      <div class="hotel-hero-bottom">
+        <span class="hotel-hero-name">${esc(a.name)}</span>
+        ${a.address ? `<span class="hotel-hero-address">${esc(a.address)}</span>` : ''}
       </div>
     </div>
     <div class="hotel-body">
-      <div class="hotel-name-row">
-        <div class="hotel-name">${esc(a.name)}</div>
-        ${a.address ? `<span class="hotel-address">${esc(a.address)}</span>` : ''}
-      </div>
       <div class="hotel-meta">
-        <div class="hotel-row hotel-row-date${dateRange ? '' : ' hotel-row-empty'}"><i class="ti ti-calendar"></i><span>${dateRange || '—'}</span></div>
+        <div class="hotel-row hotel-row-date${dateRange ? '' : ' hotel-row-empty'}">
+          <i class="ti ti-calendar"></i><span>${dateRange || '—'}</span>
+          ${a.map_url ? `<a href="${esc(a.map_url)}" target="_blank" rel="noopener" class="activity-map-icon hotel-map-icon" title="Otevřít mapu"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></a>` : ''}
+        </div>
         <div class="hotel-row${a.price_czk ? '' : ' hotel-row-empty'}"><i class="ti ti-receipt"></i><span>${a.price_czk ? formatKc(a.price_czk) + ' Kč' : '—'}</span></div>
         <div class="hotel-row${a.booking_url ? '' : ' hotel-row-empty'}"><i class="ti ti-link"></i>${a.booking_url ? `<a href="${esc(a.booking_url)}" target="_blank" rel="noopener">Odkaz na rezervaci</a>` : '<span>—</span>'}</div>
-        <div class="hotel-row hotel-row-notes${a.notes ? '' : ' hotel-row-empty'}"><i class="ti ti-notes"></i><span>${a.notes ? esc(a.notes) : '—'}</span></div>
+        <div class="hotel-row hotel-row-notes${a.notes ? '' : ' hotel-row-empty'}"><i class="ti ti-notes"></i><span>${a.notes ? esc(a.notes) : '—'}</span><button class="hotel-edit-btn" onclick="openEditModal('accommodations','${a.id}')" title="Upravit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>
       </div>
       <div class="hotel-footer">
         ${countryBadge(a.country)}
       </div>
     </div>
-    <button class="hotel-edit-btn" onclick="openEditModal('accommodations','${a.id}')" title="Upravit">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-      </svg>
-    </button>
   </div>`;
 }
 
@@ -1182,8 +1177,8 @@ function renderRestaurantsFromCache() {
 
   const filterBar = `<div class="filter-bar" id="restaurants-filter">
     <button class="filter-btn ${restaurantsFilter==='all'?'active':''}" data-filter="all">Vše <span class="filter-count">${data.length}</span></button>
-    <button class="filter-btn ${restaurantsFilter==='Korea'?'active':''}" data-filter="Korea">🇰🇷 Korea <span class="filter-count">${cntKorea}</span></button>
-    <button class="filter-btn ${restaurantsFilter==='Japonsko'?'active':''}" data-filter="Japonsko">🇯🇵 Japonsko <span class="filter-count">${cntJapan}</span></button>
+    <button class="filter-btn ${restaurantsFilter==='Korea'?'active':''}" data-filter="Korea">Korea <span class="filter-count">${cntKorea}</span></button>
+    <button class="filter-btn ${restaurantsFilter==='Japonsko'?'active':''}" data-filter="Japonsko">Japonsko <span class="filter-count">${cntJapan}</span></button>
   </div>`;
 
   document.getElementById('restaurants-content').innerHTML = header + filterBar + `<div class="section-body">
@@ -1518,9 +1513,9 @@ function buildForm(section, d) {
 }
 
 const countryOpts = (val='', includeTransfer=true) => `
-  <option value="Korea"    ${val==='Korea'    ?'selected':''}>🇰🇷 Korea</option>
-  <option value="Japonsko" ${val==='Japonsko' ?'selected':''}>🇯🇵 Japonsko</option>
-  <option value="Praha"    ${val==='Praha'    ?'selected':''}>🇨🇿 Praha</option>
+  <option value="Korea"    ${val==='Korea'    ?'selected':''}>Korea</option>
+  <option value="Japonsko" ${val==='Japonsko' ?'selected':''}>Japonsko</option>
+  <option value="Praha"    ${val==='Praha'    ?'selected':''}>Praha</option>
   ${includeTransfer ? `<option value="Transfer" ${val==='Transfer'?'selected':''}>🔄 Transfer</option>` : ''}`;
 
 /* ════ CALENDAR ═════════════════════════════════════════════ */
@@ -1683,6 +1678,7 @@ function flightsForm(d) { return `<form class="modal-form">
 function accommodationsForm(d) { return `<form class="modal-form">
   <div class="form-group"><label>Město <span class="form-required">*</span></label><input name="name" value="${esc(d.name||'')}" placeholder="Seoul" required></div>
   <div class="form-group"><label>Adresa / název hotelu</label><input name="address" value="${esc(d.address||'')}"></div>
+  <div class="form-group"><label>Odkaz na mapu</label><input type="url" name="map_url" value="${esc(d.map_url||'')}"></div>
   <div class="form-row">
     <div class="form-group"><label>Check-in <span class="form-required">*</span></label><input type="date" name="checkin" value="${d.checkin||TRIP_DEFAULT_DATE}" required></div>
     <div class="form-group"><label>Check-out <span class="form-required">*</span></label><input type="date" name="checkout" value="${d.checkout||TRIP_DEFAULT_DATE}" required></div>
