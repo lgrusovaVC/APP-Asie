@@ -742,6 +742,19 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
    FLIGHT CARDS
 ══════════════════════════════════════════════════════════════ */
 .flights-list { display: flex; flex-direction: column; gap: 10px; }
+.flights-list-wrap { display: flex; flex-direction: column; }
+.flights-past-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 40px; border-bottom: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink3); cursor: pointer; user-select: none;
+}
+.flights-past-toggle:hover { background: var(--alt); color: var(--ink); }
+.flights-past-toggle i { font-size: .9rem; }
+.flights-past-toggle > span { display: flex; align-items: center; gap: 8px; }
+.flights-past-chevron { transition: transform .2s; }
+.flights-past-chevron.rotated { transform: rotate(180deg); }
+.flights-past-list { border-bottom: 1px solid var(--rule); }
 
 /* ── Activity list ──────────────────────────────────────────── */
 .activity-list { display: flex; flex-direction: column; gap: 10px; }
@@ -1339,6 +1352,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .dash-footer { padding: 10px 16px; flex-wrap: nowrap; gap: 5px; font-size: 9px; justify-content: center; }
   .footer-star, .footer-nights { display: none; }
 
+  .flights-past-toggle { padding: 11px 16px; }
   .flight-card { grid-template-columns: 120px 1fr; }
   .flight-vis { min-height: 120px; }
   .flight-vis-date { font-size: 2rem; }

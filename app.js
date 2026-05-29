@@ -850,6 +850,20 @@ async function loadFlights() {
     ...typeStats,
   ];
 
+  const today = todayISO();
+  const past     = data.filter(f => f.date < today);
+  const upcoming = data.filter(f => f.date >= today);
+
+  const pastLabel = n => n === 1 ? 'cesta' : n < 5 ? 'cesty' : 'cest';
+  const pastHtml = past.length ? `
+    <div class="flights-past-toggle" onclick="togglePastFlights(this)">
+      <span><i class="ti ti-history"></i> ${past.length} ${pastLabel(past.length)} · absolvované</span>
+      <i class="ti ti-chevron-down flights-past-chevron"></i>
+    </div>
+    <div class="flights-past-list" hidden>
+      <div class="flights-list">${past.map(flightCard).join('')}</div>
+    </div>` : '';
+
   const el = document.getElementById('flights-content');
   el.innerHTML = pageHeader({
     num: 2, label: 'Cestování',
@@ -859,7 +873,10 @@ async function loadFlights() {
     addSection: 'flights', addLabel: 'Přidat cestu',
   }) + `<div class="section-body">
     ${data.length
-      ? `<div class="flights-list">${data.map(flightCard).join('')}</div>`
+      ? `<div class="flights-list-wrap">
+          ${pastHtml}
+          ${upcoming.length ? `<div class="flights-list">${upcoming.map(flightCard).join('')}</div>` : ''}
+        </div>`
       : emptyState('ti-plane', 'Žádné letenky', 'Přidej první letenku nebo transfer.')
     }
   </div>
@@ -1836,6 +1853,12 @@ function formatDateCZ(iso) {
   const d = new Date(iso+'T00:00:00');
   return `${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}`;
 }
+function togglePastFlights(row) {
+  const list = row.nextElementSibling;
+  list.hidden = !list.hidden;
+  row.querySelector('.flights-past-chevron').classList.toggle('rotated', !list.hidden);
+}
+
 function toggleFlightNotes(btn) {
   const text = btn.nextElementSibling.textContent;
   const overlay = document.createElement('div');
