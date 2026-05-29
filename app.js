@@ -301,7 +301,7 @@ function pageHeader({ num, label, h1, accentWord, desc, stats, addSection, addLa
   const addBtnHtml = addSection ? `
     <button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}"
             data-add="${addSection}"${isOnline ? '' : ' disabled'}>
-      <i class="ti ti-plus"></i> ${addLabel || 'Přidat'}
+      <i class="ti ti-plus"></i><span class="btn-add-text"> ${addLabel || 'Přidat'}</span>
     </button>` : '';
 
   const statsItemsHtml = (stats || []).map(s => `
@@ -820,15 +820,43 @@ function pripStartEdit(textEl) {
 }
 
 /* ════ FLIGHTS ══════════════════════════════════════════════ */
+function parseDurationMins(s) {
+  if (!s) return 0;
+  let m = 0;
+  const h = s.match(/(\d+)\s*h/i);
+  const min = s.match(/(\d+)\s*m/i);
+  if (h) m += parseInt(h[1]) * 60;
+  if (min) m += parseInt(min[1]);
+  return m;
+}
+
 async function loadFlights() {
   const data = await fetchData('flights', 'date');
+
+  const totalMins = data.reduce((s, f) => s + parseDurationMins(f.duration), 0);
+  const totalTimeStr = totalMins >= 60
+    ? `${Math.floor(totalMins/60)} h${totalMins%60 ? ' '+totalMins%60+'m' : ''}`
+    : totalMins > 0 ? `${totalMins}m` : null;
+
+  const TYPES = ['Letadlo','Vlak','Bus','Loď','Taxi'];
+  const typeCounts = {};
+  data.forEach(f => { const t = f.country||'Letadlo'; typeCounts[t] = (typeCounts[t]||0)+1; });
+  const typeStats = TYPES.filter(t => typeCounts[t])
+    .map(t => ({ value: `${typeCounts[t]}×`, label: t.toLowerCase() }));
+
+  const stats = [
+    { value: `${data.length}`, label: 'cest celkem' },
+    ...(totalTimeStr ? [{ value: totalTimeStr, label: 'na cestách' }] : []),
+    ...typeStats,
+  ];
+
   const el = document.getElementById('flights-content');
   el.innerHTML = pageHeader({
     num: 2, label: 'Cestování',
     h1: 'Z Prahy do Asie a zpátky',   accentWord: 'do Asie',
     desc: 'Přehled letů, přestupů a transferů',
-    stats: [{ value: `${data.length}`, label: 'cest celkem' }],
-    addSection: 'flights', addLabel: 'Přidat letenku / jízdenku',
+    stats,
+    addSection: 'flights', addLabel: 'Přidat cestu',
   }) + `<div class="section-body">
     ${data.length
       ? `<div class="flights-list">${data.map(flightCard).join('')}</div>`
@@ -847,7 +875,15 @@ function flightCard(f) {
     'Loď':     'https://images.unsplash.com/photo-1548032885-b5e38734688a?w=400&auto=format&fit=crop&q=80',
     'Taxi':    'https://images.unsplash.com/photo-1511527661048-7fe73d85e9a4?w=400&auto=format&fit=crop&q=80',
   };
+  const iconMap = {
+    'Letadlo': 'ti-plane',
+    'Vlak':    'ti-train',
+    'Bus':     'ti-bus',
+    'Loď':     'ti-sailboat',
+    'Taxi':    'ti-car',
+  };
   const photo = photoMap[f.country] || photoMap['Letadlo'];
+  const routeIcon = iconMap[f.country] || 'ti-plane';
   const statusBadge = f.booking_ref
     ? `<span class="badge badge-booked">Rezervováno · ${esc(f.booking_ref)}</span>`
     : `<span class="badge badge-planned">Naplánováno</span>`;
@@ -859,8 +895,8 @@ function flightCard(f) {
       <div class="flight-vis-overlay"></div>
       <div class="flight-vis-content">
         <div class="flight-vis-top">
+          <div class="flight-vis-date">${formatDateShort(f.date)}</div>
           <span class="flight-vis-badge">${typeLabel}</span>
-          ${f.duration ? `<span class="flight-vis-duration">${esc(f.duration)}</span>` : ''}
         </div>
         <div class="flight-vis-route">
           <span class="flight-vis-code">${esc(f.from_airport||'?')}</span>
@@ -873,26 +909,27 @@ function flightCard(f) {
       <div class="flight-times">
         <div class="flight-endpoint">
           <div class="flight-date">${formatDateCZ(f.date)}</div>
-          <div class="flight-time">${f.departure_time ? f.departure_time.slice(0,5) : '—:—'}</div>
+          <div class="flight-time">${f.departure_time ? f.departure_time.slice(0,5) : '<span class="flight-time-tbd">upřesníme</span>'}</div>
           <div class="flight-code">${esc(f.from_airport||'')}</div>
         </div>
         <div class="flight-route-center">
-          ${countryBadge(f.country)}
-          <div class="flight-route-line"><i class="ti ti-plane"></i></div>
+          ${f.duration ? `<div class="flight-route-duration">${esc(f.duration)}</div>` : ''}
+          <div class="flight-route-line"><i class="ti ${routeIcon}"></i></div>
           ${f.flight_number ? `<div class="flight-route-meta"><span>${esc(f.flight_number)}</span></div>` : ''}
         </div>
         <div class="flight-endpoint right">
           <div class="flight-date">${arrDate}</div>
-          <div class="flight-time">${f.arrival_time ? f.arrival_time.slice(0,5) : '—:—'}</div>
+          <div class="flight-time">${f.arrival_time ? f.arrival_time.slice(0,5) : '<span class="flight-time-tbd">upřesníme</span>'}</div>
           <div class="flight-code">${esc(f.to_airport||'')}</div>
         </div>
       </div>
       <div class="flight-main-footer">
         <div class="flight-status-group">${statusBadge}</div>
-        ${f.notes ? `<div class="flight-footer-notes">${esc(f.notes)}</div>` : '<div></div>'}
-        <div class="flight-action-btns">
-          <button class="btn-icon delete" onclick="confirmDelete('flights','${f.id}')" title="Smazat"><i class="ti ti-trash"></i></button>
-        </div>
+        ${f.notes ? `<div class="flight-footer-center">
+          <button class="flight-notes-btn" onclick="toggleFlightNotes(this)" title="Zobrazit poznámku"><i class="ti ti-info-circle"></i></button>
+          <span class="flight-footer-notes">${esc(f.notes)}</span>
+        </div>` : '<div></div>'}
+        <div></div>
       </div>
     </div>
     <button class="flight-edit-btn" onclick="openEditModal('flights','${f.id}')" title="Upravit">
@@ -1343,6 +1380,11 @@ function setupModalListeners() {
   document.getElementById('modal-close-btn').addEventListener('click',  closeModal);
   document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
   document.getElementById('modal-save-btn').addEventListener('click',   saveModalForm);
+  document.getElementById('modal-delete-btn').addEventListener('click', () => {
+    const sec = editingSection, id = editingId;
+    closeModal();
+    confirmDelete(sec, id);
+  });
   document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   });
@@ -1357,6 +1399,7 @@ function openAddModal(section) {
   editingId = null; editingSection = section;
   document.getElementById('modal-title').textContent = `Přidat — ${SECTION_TITLES[section]||section}`;
   document.getElementById('modal-body').innerHTML = buildForm(section, {});
+  document.getElementById('modal-delete-btn').style.display = 'none';
   document.getElementById('modal-overlay').style.display = 'flex';
 }
 
@@ -1366,6 +1409,7 @@ function openEditModal(section, id) {
   const item = getCache(sectionToTable(section)).find(r => r.id === id) || {};
   document.getElementById('modal-title').textContent = `Upravit — ${SECTION_TITLES[section]||section}`;
   document.getElementById('modal-body').innerHTML = buildForm(section, item);
+  document.getElementById('modal-delete-btn').style.display = '';
   document.getElementById('modal-overlay').style.display = 'flex';
 }
 
@@ -1791,6 +1835,27 @@ function formatDateCZ(iso) {
   if (!iso) return '—';
   const d = new Date(iso+'T00:00:00');
   return `${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}`;
+}
+function toggleFlightNotes(btn) {
+  const text = btn.nextElementSibling.textContent;
+  const overlay = document.createElement('div');
+  overlay.className = 'note-modal-overlay';
+  overlay.innerHTML = `
+    <div class="note-modal">
+      <div class="note-modal-header">
+        <span>Poznámka</span>
+        <button class="note-modal-close-btn" onclick="this.closest('.note-modal-overlay').remove()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="note-modal-body">${esc(text)}</div>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+function formatDateShort(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso+'T00:00:00');
+  return `${d.getDate()}. ${d.getMonth()+1}.`;
 }
 function formatKc(n) { return (parseFloat(n)||0).toLocaleString('cs-CZ',{maximumFractionDigits:0}); }
 function todayISO()  { return new Date().toISOString().slice(0,10); }

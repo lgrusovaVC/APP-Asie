@@ -405,7 +405,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .stats-strip-item:first-child { padding-left: 40px; }
 .stats-strip-value {
   font-family: var(--serif); font-size: 22px; letter-spacing: -.01em;
-  color: var(--ink); line-height: 1;
+  color: var(--ink); line-height: 1; text-transform: none;
 }
 .stats-strip-label { color: var(--ink3); }
 .stats-strip-add { margin-left: auto; padding: 12px 40px; display: flex; align-items: center; }
@@ -486,7 +486,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   font-family: var(--mono); font-size: 12px; letter-spacing: .1em;
   text-transform: uppercase;
 }
-.badge-booked   { background: var(--acc); color: #fff; }
+.badge-booked   { background: #1a1410; color: #fff; }
 .badge-planned  { border: 1px solid var(--rule); color: var(--ink3); background: transparent; }
 .badge-done     { background: #2a7a3a; color: #fff; }
 .badge-korea    { background: var(--alt); color: var(--ink2); }
@@ -821,13 +821,13 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 }
 .flight-vis-badge {
   display: inline-block;
-  background: var(--acc); color: #fff;
+  background: var(--bg); color: var(--ink);
   font-family: var(--mono); font-size: 10px; font-weight: 400;
   letter-spacing: .12em; text-transform: uppercase; padding: 3px 9px;
 }
-.flight-vis-duration {
-  font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
-  color: #fff; background: rgba(20,16,12,.52); padding: 3px 9px;
+.flight-vis-date {
+  font-family: var(--serif); font-size: 3.4rem; line-height: 1;
+  color: #e8614f; text-shadow: 0 1px 12px rgba(0,0,0,.5);
 }
 .flight-vis-route { display: flex; align-items: center; gap: 6px; }
 .flight-vis-code {
@@ -845,6 +845,11 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .flight-time {
   font-family: var(--serif); font-size: 2.6rem; line-height: 1;
   letter-spacing: -.02em; color: var(--ink);
+  min-height: 2.6rem; display: flex; align-items: center;
+}
+.flight-time-tbd {
+  font-family: var(--sans); font-size: 0.85rem; font-weight: 300;
+  color: var(--ink3); letter-spacing: .02em;
 }
 .flight-code {
   font-family: var(--mono); font-size: 11px; font-weight: 500;
@@ -859,7 +864,10 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .flight-route-center {
   flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
-.flight-route-center .badge { margin-top: -14px; margin-bottom: 10px; }
+.flight-route-duration {
+  font-family: var(--mono); font-size: 13px; letter-spacing: .04em;
+  color: var(--ink3); margin-bottom: 4px;
+}
 .flight-route-line {
   display: flex; align-items: center; gap: 6px; width: 100%;
 }
@@ -872,7 +880,8 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 }
 .flight-route-meta {
   display: flex; gap: 8px; align-items: center;
-  font-family: var(--mono); font-size: 13px; color: var(--ink3); letter-spacing: .04em;
+  font-family: var(--mono); font-size: 11px; color: var(--ink2);
+  letter-spacing: .12em; text-transform: uppercase;
 }
 .flight-route-meta span + span::before { content: '·'; margin-right: 8px; color: var(--rule); }
 .flight-details {
@@ -893,6 +902,12 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   padding-top: 12px; border-top: 1px solid var(--rule); margin-top: auto;
 }
 .flight-status-group { display: flex; align-items: center; gap: 6px; }
+.flight-footer-center { display: flex; align-items: center; justify-content: center; }
+.flight-notes-btn {
+  display: none; background: none; border: none; cursor: pointer;
+  color: var(--ink3); padding: 2px 4px; line-height: 1;
+}
+.flight-notes-btn:hover { color: var(--ink); }
 .flight-footer-notes {
   font-family: var(--mono); font-size: 13px; font-style: italic;
   color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1168,10 +1183,35 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .modal-header h3 { font-family: var(--serif); font-size: 1.2rem; font-weight: 400; color: var(--ink); }
 .modal-body   { padding: 20px 24px; }
 .modal-footer {
-  display: flex; justify-content: flex-end; gap: 10px;
+  display: flex; justify-content: space-between; align-items: center;
   padding: 14px 24px 20px; border-top: 1px solid var(--rule);
   position: sticky; bottom: 0; background: var(--bg);
 }
+.modal-footer-right { display: flex; gap: 10px; }
+.note-modal-overlay {
+  position: fixed; inset: 0; z-index: 1100;
+  background: rgba(20,16,12,.55); display: flex; align-items: flex-end;
+}
+.note-modal {
+  width: 100%; background: var(--bg); border-top: 1px solid var(--rule);
+  padding: 0 0 env(safe-area-inset-bottom);
+}
+.note-modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink3);
+}
+.note-modal-close-btn {
+  background: none; border: none; cursor: pointer; color: var(--ink3);
+  padding: 2px; line-height: 1; font-size: 1rem;
+}
+.note-modal-body {
+  padding: 16px 20px 24px;
+  font-family: var(--mono); font-size: 13px; font-style: italic;
+  color: var(--ink2); line-height: 1.6;
+}
+
 .confirm-modal { text-align: center; padding: 32px 28px; max-width: 340px; }
 .confirm-icon  { font-size: 2rem; color: var(--acc); margin-bottom: 12px; }
 .confirm-modal h3 { font-family: var(--serif); font-size: 1.15rem; font-weight: 400; margin-bottom: 8px; }
@@ -1266,10 +1306,16 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .masthead { display: none; }
   #section-dashboard .masthead { display: flex; padding: 10px 16px; font-size: 9px; gap: 8px; flex-wrap: wrap; }
   #section-dashboard .masthead > *:not(:first-child):not(:last-child) { display: none; }
-  .page-header { display: none; }
+  .page-header { padding: 20px 16px 16px; grid-template-columns: 1fr; gap: 8px; }
   .page-h1 { font-size: 30px; }
   .stats-strip { overflow-x: auto; }
-  .stats-strip-item { padding: 10px 16px; }
+  .stats-strip-item { padding: 8px 12px; }
+  .stats-strip-item:first-child { padding-left: 16px; }
+  .stats-strip-value { font-size: 16px; }
+  .stats-strip-label { font-size: 9px; }
+  .stats-strip-add { padding: 8px 18px 8px 12px; }
+  .btn-add .btn-add-text { display: none; }
+  .btn-add { padding: 6px 10px; min-width: 0; }
   .section-body { padding: 16px; }
   .filter-bar { padding: 0 16px; }
 
@@ -1294,10 +1340,23 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .footer-star, .footer-nights { display: none; }
 
   .flight-card { grid-template-columns: 120px 1fr; }
-  .flight-vis { min-height: 130px; }
-  .flight-time { font-size: 2rem; }
-  .flight-main { padding: 14px 16px; gap: 10px; }
-  .flight-main-footer { padding-top: 10px; }
+  .flight-vis { min-height: 120px; }
+  .flight-vis-date { font-size: 2rem; }
+  .flight-vis-badge { display: none; }
+  .flight-vis-route { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .flight-vis-arrow { display: none; }
+  .flight-vis-code { font-size: 0.85rem; }
+  .flight-time { font-size: 1.6rem; min-height: 1.6rem; }
+  .flight-date { font-size: 11px; }
+  .flight-code { font-size: 10px; }
+  .flight-city { font-size: 10px; }
+  .flight-route-duration { font-size: 10px; }
+  .flight-route-meta { font-size: 9px; }
+  .flight-footer-notes { display: none; }
+  .flight-notes-btn { display: inline-flex; align-items: center; font-size: 1rem; }
+  .flight-status-group .badge { font-size: 9px; padding: 3px 7px; }
+  .flight-main { padding: 12px 14px; gap: 8px; }
+  .flight-main-footer { padding-top: 8px; align-items: end; }
 
   .cards-grid { grid-template-columns: 1fr; }
   .hotel-hero { height: 140px; }
