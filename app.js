@@ -417,10 +417,10 @@ async function loadDashboard() {
 
   // Date strings
   const depStr = CONFIG.DEPARTURE_DATE
-    ? new Date(CONFIG.DEPARTURE_DATE + 'T00:00:00').toLocaleDateString('cs-CZ', { day:'numeric', month:'numeric', year:'numeric' })
+    ? new Date(CONFIG.DEPARTURE_DATE + 'T00:00:00').toLocaleDateString('cs-CZ', { day:'numeric', month:'numeric', year:'numeric' }).replace(/\. /g, '.')
     : '—';
   const retStr = CONFIG.RETURN_DATE
-    ? new Date(CONFIG.RETURN_DATE + 'T00:00:00').toLocaleDateString('cs-CZ', { day:'numeric', month:'numeric', year:'numeric' })
+    ? new Date(CONFIG.RETURN_DATE + 'T00:00:00').toLocaleDateString('cs-CZ', { day:'numeric', month:'numeric', year:'numeric' }).replace(/\. /g, '.')
     : '—';
 
   document.getElementById('dashboard-content').innerHTML = `
@@ -1263,12 +1263,32 @@ function transportRow(t) {
 }
 
 /* ════ BUDGET ═══════════════════════════════════════════════ */
+
 async function loadBudget() {
-  const data = await fetchData('expenses', 'date');
-  renderBudget(data);
+  const [data, fx] = await Promise.all([
+    fetchData('expenses', 'date'),
+    fetchFxRates(),
+  ]);
+  renderBudget(data, fx);
 }
 
-function renderBudget(expenses) {
+async function fetchFxRates() {
+  try {
+    const r = await fetch('https://api.frankfurter.dev/v1/latest?from=CZK&to=KRW,JPY');
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+function calcCurrency(cur) {
+  const input  = document.getElementById(`calc-${cur}`);
+  const result = document.getElementById(`calc-${cur}-result`);
+  const rate   = window._fxRates?.[cur];
+  if (!rate || !input.value) { result.textContent = '— Kč'; return; }
+  result.textContent = formatKc(parseFloat(input.value) / rate) + ' Kč';
+}
+
+function renderBudget(expenses, fx) {
   const total  = CONFIG.TOTAL_BUDGET_CZK || 0;
   const spent  = expenses.reduce((s,e) => s + parseFloat(e.amount_czk||0), 0);
   const remain = total - spent;
@@ -1312,26 +1332,63 @@ function renderBudget(expenses) {
       <span class="budget-legend-nums">${formatKc(catTotals[cat])} Kč</span>
     </div>`).join('');
 
-  const expItems = [...expenses].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(e => `
+  const expItems = [...expenses].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(e => {
+    const color = CAT_COLORS[e.category] || CAT_COLORS['Ostatní'];
+    const dateStr = e.date ? new Date(e.date+'T00:00:00').toLocaleDateString('cs-CZ',{day:'numeric',month:'numeric'}).replace(/\. /g,'.') : '—';
+    return `
     <div class="expense-item">
-      <div class="transport-date" style="font-size:11px">${e.date ? new Date(e.date+'T00:00:00').toLocaleDateString('cs-CZ',{day:'numeric',month:'numeric'}) : '—'}</div>
-      <div class="expense-info">
-        <div class="expense-desc">${esc(e.description||e.category)}</div>
-        <div class="expense-meta">${e.category}</div>
+      <div class="expense-date">${dateStr}</div>
+      <div class="expense-main">
+        <div class="cat-label-dot" style="background:${color}"></div>
+        <span class="expense-cat">${esc(e.category||'Ostatní')}</span>
+        <span class="expense-desc">${esc(e.description||'')}</span>
       </div>
       <div class="expense-amount">${formatKc(e.amount_czk)} Kč</div>
-      <div class="expense-actions">
-        <button class="btn-icon edit"   onclick="openEditModal('expenses','${e.id}')" title="Upravit"><i class="ti ti-pencil"></i></button>
-        <button class="btn-icon delete" onclick="confirmDelete('expenses','${e.id}')" title="Smazat"><i class="ti ti-trash"></i></button>
+      <button class="expense-edit-btn" onclick="openEditModal('expenses','${e.id}')" title="Upravit">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </button>
+    </div>`;
+  }).join('');
+
+  const krwRate = fx?.rates?.KRW || null;
+  const jpyRate = fx?.rates?.JPY || null;
+  window._fxRates = { krw: krwRate, jpy: jpyRate };
+
+  const fmt2 = n => n.toFixed(2).replace('.', ',');
+  const czk1000krw = krwRate ? fmt2(1000 / krwRate) : '—';
+  const czk100jpy  = jpyRate ? fmt2(100  / jpyRate)  : '—';
+
+  const currencyCol = `
+    <div class="budget-lower-title">Kalkulačka kurzů</div>
+    <div class="currency-widget">
+      <div class="currency-row">
+        <div class="currency-calc">
+          <input type="number" class="currency-input" id="calc-krw" value="1000" oninput="calcCurrency('krw')">
+          <span class="currency-sym">₩</span>
+          <span class="currency-eq">=</span>
+          <span class="currency-result" id="calc-krw-result">${czk1000krw} Kč</span>
+        </div>
       </div>
-    </div>`).join('');
+      <div class="currency-row">
+        <div class="currency-calc">
+          <input type="number" class="currency-input" id="calc-jpy" value="100" oninput="calcCurrency('jpy')">
+          <span class="currency-sym">¥</span>
+          <span class="currency-eq">=</span>
+          <span class="currency-result" id="calc-jpy-result">${czk100jpy} Kč</span>
+        </div>
+      </div>
+      ${fx?.date ? (() => { const [y,m,d] = fx.date.split('-'); return `<div class="currency-note">ECB ${+d}.${+m}.${y}</div>`; })() : '<div class="currency-note">Kurzy nejsou dostupné</div>'}
+    </div>`;
 
   const budgetHeadline = budgetWords(total);
   const el = document.getElementById('budget-content');
   el.innerHTML = pageHeader({
     num: 7, label: 'Rozpočet',
     h1: budgetHeadline.text, accentWord: budgetHeadline.accent,
-    desc: `Celkem ${formatKc(total)} Kč na ${Math.ceil((new Date(CONFIG.RETURN_DATE)-new Date(CONFIG.DEPARTURE_DATE))/86400000)} dní`,
+    desc: `Investice do vzpomínek, které zůstanou`,
     stats: [
       { value: `${formatKc(total)} Kč`, label: 'celkový rozpočet' },
       { value: `${formatKc(spent)} Kč`, label: 'utraceno' },
@@ -1341,35 +1398,34 @@ function renderBudget(expenses) {
   }) + `
   <div class="budget-hero">
     <div class="budget-hero-col">
-      <div class="budget-spent-label">Utraceno</div>
-      <div class="budget-spent-big">${formatKc(spent)} <span class="budget-spent-currency">Kč</span></div>
-      <div class="budget-spent-sub">ze stropu ${formatKc(total)} Kč</div>
-      <div class="budget-progress-wrap">
-        <div class="budget-progress-bar">
-          <div class="budget-progress-fill" style="width:${pct}%"></div>
-        </div>
-        <div class="budget-progress-label">${pct}% · zbývá ${formatKc(remain)} Kč</div>
-      </div>
+      ${currencyCol}
     </div>
-    <div class="budget-hero-col" style="display:flex;align-items:center;justify-content:center">
+    <div class="budget-hero-col budget-hero-donut">
       ${donutSvg}
     </div>
     <div class="budget-hero-col">
-      <div class="budget-lower-title">Přehled kategorií</div>
-      <div class="budget-legend">${legendHtml}</div>
+      <div class="budget-lower-title">K dispozici</div>
+      <div class="budget-spent-big">${formatKc(Math.max(0, remain))} <span class="budget-spent-currency">Kč</span></div>
+      <div class="budget-spent-sub">z celkových ${formatKc(total)} Kč</div>
+      <div class="budget-progress-wrap">
+        <div class="budget-progress-bar">
+          <div class="budget-progress-fill" style="width:${Math.max(0, 100 - pct)}%"></div>
+        </div>
+        <div class="budget-progress-label">${pct}% utraceno · ${formatKc(spent)} Kč</div>
+      </div>
     </div>
   </div>
 
   <div class="budget-lower">
     <div class="budget-lower-col">
-      <div class="budget-lower-title">Výdaje podle kategorií</div>
-      ${catRows}
-    </div>
-    <div class="budget-lower-col">
       <div class="budget-lower-title">Poslední výdaje</div>
       <div class="expenses-list">
         ${expenses.length ? expItems : `<div class="empty-state" style="padding:30px 0"><p>Žádné výdaje.</p></div>`}
       </div>
+    </div>
+    <div class="budget-lower-col">
+      <div class="budget-lower-title">Výdaje podle kategorií</div>
+      ${catRows}
     </div>
   </div>
   ${tripFooter()}`;
@@ -1377,13 +1433,13 @@ function renderBudget(expenses) {
 
 function budgetWords(amount) {
   const map = [
-    { min:200000, text:'Dvě stě tisíc.',       accent:'stě' },
-    { min:150000, text:'Sto padesát tisíc.',   accent:'padesát' },
-    { min:125000, text:'Sto dvacet pět tisíc.', accent:'tisíc' },
-    { min:100000, text:'Sto tisíc.',           accent:'tisíc' },
-    { min:75000,  text:'Sedmdesát pět tisíc.', accent:'pět' },
-    { min:50000,  text:'Padesát tisíc.',       accent:'tisíc' },
-    { min:0,      text:`${formatKc(amount)} Kč.`, accent:'Kč' },
+    { min:200000, text:'Dvě stě tisíc',       accent:'stě' },
+    { min:150000, text:'Sto padesát tisíc',   accent:'padesát' },
+    { min:125000, text:'Sto dvacet pět tisíc', accent:'tisíc' },
+    { min:100000, text:'Sto tisíc',           accent:'tisíc' },
+    { min:75000,  text:'Sedmdesát pět tisíc', accent:'pět' },
+    { min:50000,  text:'Padesát tisíc',       accent:'tisíc' },
+    { min:0,      text:`${formatKc(amount)} Kč`, accent:'Kč' },
   ];
   return map.find(m => amount >= m.min) || map[map.length-1];
 }
@@ -1875,7 +1931,7 @@ function toggleFlightNotes(btn) {
 function formatDateShort(iso) {
   if (!iso) return '—';
   const d = new Date(iso+'T00:00:00');
-  return `${d.getDate()}. ${d.getMonth()+1}.`;
+  return `${d.getDate()}.${d.getMonth()+1}.`;
 }
 function formatKc(n) { return (parseFloat(n)||0).toLocaleString('cs-CZ',{maximumFractionDigits:0}); }
 function todayISO()  { return new Date().toISOString().slice(0,10); }
