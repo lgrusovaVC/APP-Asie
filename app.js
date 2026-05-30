@@ -1338,7 +1338,7 @@ function calcCurrency(cur) {
   const result = document.getElementById(`calc-${cur}-result`);
   const rate   = window._fxRates?.[cur];
   if (!rate || !input.value) { result.textContent = '— Kč'; return; }
-  result.textContent = formatKc(parseFloat(input.value) / rate) + ' Kč';
+  result.textContent = (parseFloat(input.value) / rate).toFixed(2).replace('.', ',') + ' Kč';
 }
 
 function renderBudget(expenses, fx) {
