@@ -1324,9 +1324,13 @@ async function loadBudget() {
 async function fetchFxRates() {
   try {
     const r = await fetch('https://api.frankfurter.dev/v1/latest?from=CZK&to=KRW,JPY');
-    if (!r.ok) return null;
-    return await r.json();
-  } catch { return null; }
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    try { localStorage.setItem('cache_fx', JSON.stringify(data)); } catch {}
+    return data;
+  } catch {
+    try { return JSON.parse(localStorage.getItem('cache_fx')) || null; } catch { return null; }
+  }
 }
 
 function calcCurrency(cur) {
