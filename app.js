@@ -1337,8 +1337,8 @@ function calcCurrency(cur) {
   const input  = document.getElementById(`calc-${cur}`);
   const result = document.getElementById(`calc-${cur}-result`);
   const rate   = window._fxRates?.[cur];
-  if (!rate || !input.value) { result.textContent = '— Kč'; return; }
-  result.textContent = (parseFloat(input.value) / rate).toFixed(2).replace('.', ',') + ' Kč';
+  if (!rate || !input.value) { result.innerHTML = '—'; return; }
+  result.innerHTML = (parseFloat(input.value) / rate).toFixed(2).replace('.', ',') + ' <span class="currency-kc">Kč</span>';
 }
 
 function renderBudget(expenses, fx) {
@@ -1410,7 +1410,7 @@ function renderBudget(expenses, fx) {
   const jpyRate = fx?.rates?.JPY || null;
   window._fxRates = { krw: krwRate, jpy: jpyRate };
 
-  const fmt2 = n => n.toFixed(2).replace('.', ',');
+  const fmt2 = n => n.toFixed(2).replace('.', ',') + ' <span class="currency-kc">Kč</span>';
   const czk1000krw = krwRate ? fmt2(1000 / krwRate) : '—';
   const czk100jpy  = jpyRate ? fmt2(100  / jpyRate)  : '—';
 
@@ -1422,7 +1422,7 @@ function renderBudget(expenses, fx) {
           <input type="number" class="currency-input" id="calc-krw" value="1000" oninput="calcCurrency('krw')">
           <span class="currency-sym">₩</span>
           <span class="currency-eq">=</span>
-          <span class="currency-result" id="calc-krw-result">${czk1000krw} Kč</span>
+          <span class="currency-result" id="calc-krw-result">${czk1000krw}</span>
         </div>
       </div>
       <div class="currency-row">
@@ -1430,7 +1430,7 @@ function renderBudget(expenses, fx) {
           <input type="number" class="currency-input" id="calc-jpy" value="100" oninput="calcCurrency('jpy')">
           <span class="currency-sym">¥</span>
           <span class="currency-eq">=</span>
-          <span class="currency-result" id="calc-jpy-result">${czk100jpy} Kč</span>
+          <span class="currency-result" id="calc-jpy-result">${czk100jpy}</span>
         </div>
       </div>
       ${fx?.date ? (() => { const [y,m,d] = fx.date.split('-'); return `<div class="currency-note">ECB ${+d}.${+m}.${y}</div>`; })() : '<div class="currency-note">Kurzy nejsou dostupné</div>'}

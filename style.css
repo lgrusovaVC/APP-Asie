@@ -1165,9 +1165,10 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   font-family: var(--mono); font-size: 15px; color: var(--ink);
   outline: none;
 }
-.currency-sym { font-family: var(--sans); font-size: 20px; font-weight: 400; color: var(--ink2); flex-shrink: 0; }
+.currency-sym { font-family: var(--sans); font-size: 20px; font-weight: 400; color: var(--ink3); flex-shrink: 0; }
 .currency-eq  { font-family: var(--mono); font-size: 13px; color: var(--ink3); flex-shrink: 0; }
-.currency-result { font-family: var(--serif); font-size: 17px; font-weight: 700; color: var(--acc); white-space: nowrap; flex-shrink: 0; }
+.currency-result { font-family: var(--serif); font-size: 17px; font-weight: 700; color: var(--acc); white-space: nowrap; flex-shrink: 0; letter-spacing: .04em; }
+.currency-kc { color: var(--ink3); }
 .currency-note { font-family: var(--mono); font-size: 10px; color: var(--ink3); letter-spacing: .04em; text-align: right; }
 
 /* Budget two-col lower section */
