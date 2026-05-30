@@ -1429,6 +1429,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .budget-lower-col:last-child { padding-right: 16px; }
   .budget-lower-col { padding: 18px 16px; }
   .budget-hero-col { padding: 20px 16px; }
+  .budget-hero-col:first-child { padding: 20px 28px 20px 16px; background: #fff; }
   .budget-hero-donut { display: none; }
   #budget-content .stats-strip { display: flex; }
   .currency-calc { width: 100%; justify-content: flex-end; gap: 10px; }
