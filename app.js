@@ -916,9 +916,9 @@ function flightCard(f) {
           <span class="flight-vis-badge">${typeLabel}</span>
         </div>
         <div class="flight-vis-route">
-          <span class="flight-vis-code">${esc(f.from_airport||'?')}</span>
+          <span class="flight-vis-code">${esc((f.from_airport||'?').split(',')[0].trim())}</span>
           <span class="flight-vis-arrow">→</span>
-          <span class="flight-vis-code">${esc(f.to_airport||'?')}</span>
+          <span class="flight-vis-code">${esc((f.to_airport||'?').split(',')[0].trim())}</span>
         </div>
       </div>
     </div>
