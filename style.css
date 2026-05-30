@@ -1431,6 +1431,12 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .budget-hero-col { padding: 20px 16px; }
   .budget-hero-donut { display: none; }
   #budget-content .stats-strip { display: flex; }
+  .currency-calc { width: 100%; justify-content: flex-end; gap: 10px; }
+  .currency-eq { margin-left: 0; }
+  .currency-input { font-size: 20px; width: 90px; text-align: right; }
+  .currency-sym { font-size: 26px; }
+  .currency-result { font-size: 22px; }
+  .currency-note { display: none; }
   .expense-item { grid-template-columns: 50px 1fr auto auto; align-items: start; }
   .expense-main { flex-wrap: wrap; gap: 2px 6px; }
   .expense-cat { flex: 1; width: auto; }
