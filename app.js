@@ -9,6 +9,7 @@ let isOnline = navigator.onLine;
 let pendingDelete = null;
 let editingId = null;
 let editingSection = null;
+let flightsFilter = 'all';
 let activitiesFilter = 'all';
 let restaurantsFilter = 'all';
 let photoCurrent = 0;
@@ -227,6 +228,31 @@ function setupNavigation() {
   });
 }
 
+function calEventNav(type, dateStr, id) {
+  const today = todayISO();
+  const isPast = dateStr < today;
+  if (type === 'flight') {
+    flightsFilter = isPast ? 'hotovo' : 'all';
+    navigateTo('flights');
+  } else if (type === 'activity') {
+    activitiesFilter = isPast ? 'hotovo' : 'all';
+    navigateTo('activities');
+  } else if (type === 'accommodation') {
+    navigateTo('accommodations');
+  } else if (type === 'transport') {
+    navigateTo('transport');
+  }
+  if (id) setTimeout(() => highlightCard(id), 400);
+}
+
+function highlightCard(id) {
+  const el = document.querySelector(`[data-id="${id}"]`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('card-highlight');
+  setTimeout(() => el.classList.remove('card-highlight'), 1800);
+}
+
 function navigateTo(section) {
   currentSection = section;
   document.querySelectorAll('.section').forEach((s) => s.classList.remove('active'));
@@ -247,6 +273,12 @@ function loadSection(s) {
 
 function handleFilterClick(btn) {
   const parentId = btn.closest('.filter-bar')?.id;
+  if (parentId === 'flights-filter') {
+    flightsFilter = btn.dataset.filter;
+    btn.closest('.filter-bar').querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderFlightsFromCache();
+  }
   if (parentId === 'activities-filter') {
     activitiesFilter = btn.dataset.filter;
     btn.closest('.filter-bar').querySelectorAll('.filter-btn').forEach((b) => b.classList.remove('active'));
@@ -851,36 +883,51 @@ async function loadFlights() {
   ];
 
   const today = todayISO();
-  const past     = data.filter(f => f.date < today);
-  const upcoming = data.filter(f => f.date >= today);
+  const counts = {
+    all:        data.filter(f => f.date >= today).length,
+    rezervováno: data.filter(f => f.date >= today && f.booking_ref && f.booking_ref.trim()).length,
+    naplánováno: data.filter(f => f.date >= today && !(f.booking_ref && f.booking_ref.trim())).length,
+    hotovo:     data.filter(f => f.date < today).length,
+  };
 
-  const pastLabel = n => n === 1 ? 'cesta' : n < 5 ? 'cesty' : 'cest';
-  const pastHtml = past.length ? `
-    <div class="flights-past-toggle" onclick="togglePastFlights(this)">
-      <span><i class="ti ti-history"></i> ${past.length} ${pastLabel(past.length)} · absolvované</span>
-      <i class="ti ti-chevron-down flights-past-chevron"></i>
-    </div>
-    <div class="flights-past-list" hidden>
-      <div class="flights-list">${past.map(flightCard).join('')}</div>
-    </div>` : '';
+  const filterBar = `<div class="filter-bar" id="flights-filter">
+    <button class="filter-btn ${flightsFilter==='all'?'active':''}" data-filter="all">Harmonogram <span class="filter-count">${counts.all}</span></button>
+    <button class="filter-btn ${flightsFilter==='rezervováno'?'active':''}" data-filter="rezervováno">Rezervováno <span class="filter-count">${counts.rezervováno}</span></button>
+    <button class="filter-btn ${flightsFilter==='naplánováno'?'active':''}" data-filter="naplánováno">Naplánováno <span class="filter-count">${counts.naplánováno}</span></button>
+    <button class="filter-btn ${flightsFilter==='hotovo'?'active':''}" data-filter="hotovo">Hotovo <span class="filter-count">${counts.hotovo}</span></button>
+  </div>`;
 
   const el = document.getElementById('flights-content');
   el.innerHTML = pageHeader({
     num: 2, label: 'Cestování',
-    h1: 'Z Prahy do Asie a zpátky',   accentWord: 'do Asie',
+    h1: 'Z Prahy do Asie a zpátky', accentWord: 'do Asie',
     desc: 'Přehled letů, přestupů a transferů',
     stats,
     addSection: 'flights', addLabel: 'Přidat cestu',
-  }) + `<div class="section-body">
-    ${data.length
-      ? `<div class="flights-list-wrap">
-          ${pastHtml}
-          ${upcoming.length ? `<div class="flights-list">${upcoming.map(flightCard).join('')}</div>` : ''}
-        </div>`
-      : emptyState('ti-plane', 'Žádné letenky', 'Přidej první letenku nebo transfer.')
-    }
-  </div>
-  ${tripFooter()}`;
+  }) + filterBar + `<div class="section-body" id="flights-list-body"></div>${tripFooter()}`;
+
+  renderFlightsFromCache();
+}
+
+function renderFlightsFromCache() {
+  const body = document.getElementById('flights-list-body');
+  if (!body) return;
+  const data = (getCache('flights') || []).slice().sort((a, b) => {
+    const ka = `${a.date}T${a.departure_time||'00:00'}`;
+    const kb = `${b.date}T${b.departure_time||'00:00'}`;
+    return ka.localeCompare(kb);
+  });
+  const today = todayISO();
+  const filtered = flightsFilter === 'hotovo'
+    ? data.filter(f => f.date < today)
+    : flightsFilter === 'rezervováno'
+    ? data.filter(f => f.date >= today && f.booking_ref && f.booking_ref.trim())
+    : flightsFilter === 'naplánováno'
+    ? data.filter(f => f.date >= today && !(f.booking_ref && f.booking_ref.trim()))
+    : data.filter(f => f.date >= today);
+  body.innerHTML = filtered.length
+    ? `<div class="flights-list">${filtered.map(flightCard).join('')}</div>`
+    : emptyState('ti-plane', 'Žádné záznamy', 'Pro tento filtr nejsou žádné jízdenky.');
 }
 
 function flightCard(f) {
@@ -907,7 +954,7 @@ function flightCard(f) {
 
   const arrDate = formatDateCZ(f.arrival_date || f.date);
 
-  return `<div class="flight-card">
+  return `<div class="flight-card" data-id="${f.id}">
     <div class="flight-vis" style="background-image:url('${photo}')">
       <div class="flight-vis-overlay"></div>
       <div class="flight-vis-content">
@@ -930,9 +977,9 @@ function flightCard(f) {
           <div class="flight-code">${esc(f.from_airport||'')}</div>
         </div>
         <div class="flight-route-center">
-          ${f.duration ? `<div class="flight-route-duration">${esc(f.duration)}</div>` : ''}
+          <div class="flight-route-duration">${esc(f.duration||'')}</div>
           <div class="flight-route-line"><i class="ti ${routeIcon}"></i></div>
-          ${f.flight_number ? `<div class="flight-route-meta"><span>${esc(f.flight_number)}</span></div>` : ''}
+          <div class="flight-route-meta">${f.flight_number ? `<span>${esc(f.flight_number)}</span>` : ''}</div>
         </div>
         <div class="flight-endpoint right">
           <div class="flight-date">${arrDate}</div>
@@ -1028,9 +1075,10 @@ function accommodationCard(a) {
   const nights = a.checkin && a.checkout
     ? Math.max(0, Math.ceil((new Date(a.checkout)-new Date(a.checkin))/86400000)) : null;
   const heroImg = accomHeroImg(a);
+  const fmtTime = t => t ? t.slice(0,5) : null;
   const dateRange = a.checkin && a.checkout
-    ? `${shortDateNoYear(a.checkin)} – ${shortDateNoYear(a.checkout)}` : null;
-  return `<div class="hotel-card">
+    ? `${shortDateNoYear(a.checkin)}${fmtTime(a.checkin_time) ? ' '+fmtTime(a.checkin_time) : ''} – ${shortDateNoYear(a.checkout)}${fmtTime(a.checkout_time) ? ' '+fmtTime(a.checkout_time) : ''}` : null;
+  return `<div class="hotel-card" data-id="${a.id}">
     <div class="hotel-hero">
       <img class="hotel-hero-img" src="${heroImg}" alt="${esc(a.name)}" loading="lazy">
       <div class="hotel-hero-overlay"></div>
@@ -1051,10 +1099,11 @@ function accommodationCard(a) {
         </div>
         <div class="hotel-row${a.price_czk ? '' : ' hotel-row-empty'}"><i class="ti ti-receipt"></i><span>${a.price_czk ? formatKc(a.price_czk) + ' Kč' : '—'}</span></div>
         <div class="hotel-row${a.booking_url ? '' : ' hotel-row-empty'}"><i class="ti ti-link"></i>${a.booking_url ? `<a href="${esc(a.booking_url)}" target="_blank" rel="noopener">Odkaz na rezervaci</a>` : '<span>—</span>'}</div>
-        <div class="hotel-row hotel-row-notes${a.notes ? '' : ' hotel-row-empty'}"><i class="ti ti-notes"></i><span>${a.notes ? esc(a.notes) : '—'}</span><button class="hotel-edit-btn" onclick="openEditModal('accommodations','${a.id}')" title="Upravit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div>
+        <div class="hotel-row hotel-row-notes${a.notes ? '' : ' hotel-row-empty'}"><i class="ti ti-notes"></i><span>${a.notes ? esc(a.notes) : '—'}</span></div>
       </div>
       <div class="hotel-footer">
         ${countryBadge(a.country)}
+        <button class="hotel-edit-btn" onclick="openEditModal('accommodations','${a.id}')" title="Upravit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
       </div>
     </div>
   </div>`;
@@ -1123,7 +1172,7 @@ function activityCard(a) {
   const sMap = { 'naplánováno':['badge-planned','Naplánováno'], 'rezervováno':['badge-booked','Rezervováno'], 'hotovo':['badge-done','Hotovo'] };
   const [cls, label] = sMap[status] || ['badge-planned', status];
   const hasPrice = a.price !== null && a.price !== undefined && a.price !== '';
-  return `<div class="activity-card${a.photo_url ? ' activity-card-photo' : ''}">
+  return `<div class="activity-card${a.photo_url ? ' activity-card-photo' : ''}" data-id="${a.id}">
     <div class="activity-date-col">
       ${countryBadge(a.country)}
       ${a.date ? `<div class="activity-date">${shortDateNoYear(a.date)}</div>` : ''}
@@ -1468,6 +1517,7 @@ function openAddModal(section) {
   editingId = null; editingSection = section;
   document.getElementById('modal-title').textContent = `Přidat — ${SECTION_TITLES[section]||section}`;
   document.getElementById('modal-body').innerHTML = buildForm(section, {});
+  if (section === 'flights') attachFlightsDurationCalc(document.getElementById('modal-body').querySelector('.modal-form'));
   document.getElementById('modal-delete-btn').style.display = 'none';
   document.getElementById('modal-overlay').style.display = 'flex';
 }
@@ -1478,6 +1528,7 @@ function openEditModal(section, id) {
   const item = getCache(sectionToTable(section)).find(r => r.id === id) || {};
   document.getElementById('modal-title').textContent = `Upravit — ${SECTION_TITLES[section]||section}`;
   document.getElementById('modal-body').innerHTML = buildForm(section, item);
+  if (section === 'flights') attachFlightsDurationCalc(document.getElementById('modal-body').querySelector('.modal-form'));
   document.getElementById('modal-delete-btn').style.display = '';
   document.getElementById('modal-overlay').style.display = 'flex';
 }
@@ -1600,16 +1651,19 @@ async function loadCalendar() {
 
 function buildCalEventMap(flights, accs, acts, trans) {
   const map = {};
-  const add = (dateStr, type, label, icon, sub) => {
+  const timeVal = s => /^\d{2}:\d{2}/.test(s||'') ? s : null;
+  const add = (dateStr, type, label, icon, sub, time, id) => {
     if (!dateStr) return;
     const key = dateStr.slice(0,10);
     if (!map[key]) map[key] = [];
-    map[key].push({type, label, icon, sub});
+    map[key].push({type, label, icon, sub, time: time ?? timeVal(sub), id});
   };
 
+  const flightIconMap = { 'Letadlo':'ti-plane', 'Vlak':'ti-train', 'Bus':'ti-bus', 'Loď':'ti-sailboat', 'Taxi':'ti-car' };
   flights.forEach(f => add(f.date, 'flight',
-    `${esc(f.from_airport||'?')} → ${esc(f.to_airport||'?')}`, 'ti-plane',
-    f.departure_time ? f.departure_time.slice(0,5) : null));
+    `${esc(f.from_airport||'?')} → ${esc(f.to_airport||'?')}`,
+    flightIconMap[f.country] || 'ti-plane',
+    f.departure_time ? f.departure_time.slice(0,5) : null, null, f.id));
 
   accs.forEach(a => {
     if (!a.checkin || !a.checkout) return;
@@ -1619,18 +1673,33 @@ function buildCalEventMap(flights, accs, acts, trans) {
     const checkoutEve = localKey(new Date(end.getTime() - 86400000));
     while (d < end) {
       const key = localKey(d);
-      const sub = key === a.checkin ? 'Check-in' : key === checkoutEve ? 'Check-out' : null;
-      add(key, 'accommodation', esc(a.name), 'ti-bed', sub);
+      const ciTime = a.checkin_time ? a.checkin_time.slice(0,5) : null;
+      const coTime = a.checkout_time ? a.checkout_time.slice(0,5) : null;
+      const isCheckin  = key === a.checkin;
+      const isCheckout = key === checkoutEve;
+      const sub  = isCheckin  ? `${ciTime  ? ciTime+' '  : ''}Check-in`
+                 : isCheckout ? `${coTime ? coTime+' ' : ''}Check-out`
+                 : null;
+      const time = isCheckin ? ciTime : isCheckout ? coTime : null;
+      add(key, 'accommodation', esc(a.name), 'ti-bed', sub, time, a.id);
       d.setDate(d.getDate()+1);
     }
   });
 
-  acts.forEach(a => add(a.date, 'activity', esc(a.name), 'ti-map-pin',
-    a.time ? a.time.slice(0,5) : null));
+  acts.forEach(a => add(a.date, 'activity',
+    esc(a.location ? `${a.location}, ${a.name}` : a.name), 'ti-map-pin',
+    a.time ? a.time.slice(0,5) : null, null, a.id));
 
   trans.forEach(t => add(t.date, 'transport',
     `${esc(t.route_from||'?')} → ${esc(t.route_to||'?')}`, 'ti-train',
     t.time ? t.time.slice(0,5) : null));
+
+  Object.values(map).forEach(events => events.sort((a, b) => {
+    if (a.time && b.time) return a.time.localeCompare(b.time);
+    if (a.time) return -1;
+    if (b.time) return 1;
+    return 0;
+  }));
 
   return map;
 }
@@ -1672,13 +1741,14 @@ function renderCalendarMonth() {
     const TYPE_LABELS = { flight:'Cestování', accommodation:'Ubytování', activity:'Výlet', transport:'Doprava' };
     if (events.length) {
       const items = events.map(e => `
-        <div class="cal-event-item cal-event-${e.type}">
+        <div class="cal-event-item cal-event-${e.type} cal-event-link" onclick="calEventNav('${e.type}','${calSelectedDay}','${e.id||''}')">
           <div class="cal-event-icon"><i class="ti ${e.icon}"></i></div>
           <div class="cal-event-body">
             <div class="cal-event-type">${TYPE_LABELS[e.type]||e.type}</div>
             <div class="cal-event-label">${e.label}</div>
             ${e.sub ? `<div class="cal-event-sub">${e.sub}</div>` : ''}
           </div>
+          <i class="ti ti-chevron-right cal-event-arrow"></i>
         </div>`).join('');
       detail = `<div class="cal-detail"><div class="cal-detail-date">${dayLabel}</div><div class="cal-detail-events">${items}</div></div>`;
     } else {
@@ -1702,6 +1772,31 @@ function calSelectDay(dateStr) {
       if (detail) detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
+}
+
+function calcFlightDuration(depDate, depTime, arrDate, arrTime) {
+  if (!depDate || !depTime || !arrDate || !arrTime) return '';
+  const dep = new Date(`${depDate}T${depTime}`);
+  const arr = new Date(`${arrDate}T${arrTime}`);
+  const diff = arr - dep;
+  if (diff <= 0) return '';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
+function attachFlightsDurationCalc(form) {
+  const depDate = form.querySelector('[name="date"]');
+  const depTime = form.querySelector('[name="departure_time"]');
+  const arrDate = form.querySelector('[name="arrival_date"]');
+  const arrTime = form.querySelector('[name="arrival_time"]');
+  const durField = form.querySelector('[name="duration"]');
+  if (!depDate || !depTime || !arrDate || !arrTime || !durField) return;
+  function update() {
+    const calc = calcFlightDuration(depDate.value, depTime.value, arrDate.value, arrTime.value);
+    if (calc) durField.value = calc;
+  }
+  [depDate, depTime, arrDate, arrTime].forEach(el => el.addEventListener('change', update));
 }
 
 function flightsForm(d) { return `<form class="modal-form">
@@ -1737,8 +1832,12 @@ function accommodationsForm(d) { return `<form class="modal-form">
   <div class="form-group"><label>Adresa / název hotelu</label><input name="address" value="${esc(d.address||'')}"></div>
   <div class="form-group"><label>Odkaz na mapu</label><input type="url" name="map_url" value="${esc(d.map_url||'')}"></div>
   <div class="form-row">
-    <div class="form-group"><label>Check-in <span class="form-required">*</span></label><input type="date" name="checkin" value="${d.checkin||TRIP_DEFAULT_DATE}" required></div>
-    <div class="form-group"><label>Check-out <span class="form-required">*</span></label><input type="date" name="checkout" value="${d.checkout||TRIP_DEFAULT_DATE}" required></div>
+    <div class="form-group"><label>Check-in datum <span class="form-required">*</span></label><input type="date" name="checkin" value="${d.checkin||TRIP_DEFAULT_DATE}" required></div>
+    <div class="form-group"><label>Check-in čas</label><input type="time" name="checkin_time" value="${d.checkin_time||'14:00'}"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Check-out datum <span class="form-required">*</span></label><input type="date" name="checkout" value="${d.checkout||TRIP_DEFAULT_DATE}" required></div>
+    <div class="form-group"><label>Check-out čas</label><input type="time" name="checkout_time" value="${d.checkout_time||'10:00'}"></div>
   </div>
   <div class="form-row">
     <div class="form-group"><label>Cena (Kč)</label><input type="number" name="price_czk" value="${d.price_czk||''}" min="0"></div>
