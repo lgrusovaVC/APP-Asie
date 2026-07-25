@@ -1044,15 +1044,15 @@ function accomNocLabel(n) {
 
 function accomHeroImg(a) {
   const text = `${a.name||''} ${a.address||''} ${a.notes||''}`.toLowerCase();
-  if (/busan|pusan|haeundae|gamcheon/.test(text))   return 'assets/Busan-beach.jpg';
+  if (/busan|pusan|haeundae|gamcheon/.test(text))   return 'assets/Busan-Igidae.jpg';
   if (/kyoto|kiyomizu|higashiyama|gion/.test(text)) return 'assets/Kyoto-zlaty-pavilon.jpg';
   if (/hiroshima|miyajima/.test(text))              return 'assets/Hiroshima-pamatnik.jpg';
   if (/tokyo|shibuya|asakusa|shinjuku|ueno/.test(text)) return 'assets/Tokyo-Shibuya.jpg';
   if (/nara/.test(text))                            return 'assets/Nara-Japonsko.jpg';
   if (/seoul|jongno|hongdae|myeongdong|itaewon/.test(text))
-    return 'https://images.unsplash.com/photo-1538485399081-7191377e8241?w=400&auto=format&fit=crop&q=80';
+    return 'assets/DDP-Seoul.jpg';
   if (/gyeongju|bulguksa/.test(text))
-    return 'https://images.unsplash.com/photo-1545569341-9eb8b30979d9?w=400&auto=format&fit=crop&q=80';
+    return 'assets/Hanok-Gyeongju.jpg';
   if (/fukuoka|hakata/.test(text))
     return 'https://images.unsplash.com/photo-1524413840807-0c3cb6fa808d?w=400&auto=format&fit=crop&q=80';
   if (/hakone|onsen|ryokan/.test(text))
