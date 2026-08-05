@@ -22,6 +22,7 @@ const SECTION_TITLES = {
   dashboard: 'Přehled', flights: 'Cestování', accommodations: 'Ubytování',
   activities: 'Místa', priprava: 'Příprava', restaurants: 'Restaurace',
   transport: 'Jízdní řády', budget: 'Rozpočet', calendar: 'Kalendář',
+  diary: 'Deník',
 };
 const CAT_ICONS = { 'Letenky':'✈️','Ubytování':'🏨','Aktivity':'🗺️','Jídlo':'🍜','Doprava':'🚆','Ostatní':'💳' };
 const CAT_COLORS = { 'Letenky':'#C73A1A','Ubytování':'#1A55A0','Aktivity':'#2A7A3A','Jídlo':'#8A6200','Doprava':'#6B3FA0','Ostatní':'#7A7268' };
@@ -267,7 +268,8 @@ function navigateTo(section) {
 function loadSection(s) {
   const map = { dashboard:'loadDashboard', flights:'loadFlights', accommodations:'loadAccommodations',
                 activities:'loadActivities', priprava:'loadPriprava', restaurants:'loadRestaurants',
-                transport:'loadTransport', budget:'loadBudget', calendar:'loadCalendar' };
+                transport:'loadTransport', budget:'loadBudget', calendar:'loadCalendar',
+                diary:'loadDiary' };
   if (map[s]) window[map[s]]();
 }
 
@@ -1986,6 +1988,283 @@ function closePhotoModal() {
   const lb = document.getElementById('photo-lightbox');
   if (lb) lb.style.display = 'none';
   document.body.style.overflow = '';
+}
+
+/* ════ DENÍK — fotky na mapě ════════════════════════════════ */
+let diaryMap = null;
+let diaryMarkers = {};
+let diaryPlacingId = null;
+let diaryGeoPromise = null;
+
+async function loadDiary() {
+  const data = await fetchData('photos', 'taken_at');
+  const withPos = data.filter(p => p.lat != null && p.lng != null);
+  const days = new Set(data.map(p => (p.taken_at || p.created_at || '').slice(0, 10)).filter(Boolean));
+
+  const stats = [
+    { value: `${data.length}`, label: data.length === 1 ? 'fotka' : data.length <= 4 ? 'fotky' : 'fotek' },
+    { value: `${withPos.length}`, label: 'na mapě' },
+    ...(days.size ? [{ value: `${days.size}`, label: days.size === 1 ? 'den' : days.size <= 4 ? 'dny' : 'dní' }] : []),
+  ];
+
+  const el = document.getElementById('diary-content');
+  el.innerHTML = pageHeader({
+    num: 8, label: 'Deník',
+    h1: 'Naše cesta v obrazech', accentWord: 'v obrazech',
+    desc: 'Fotky z cesty — kde a kdy vznikly',
+    stats,
+  }) + `
+  <div class="section-body">
+    <div class="diary-toolbar">
+      <button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}" id="diary-upload-btn"${isOnline ? '' : ' disabled'}>
+        <i class="ti ti-camera-plus"></i><span> Přidat fotky</span>
+      </button>
+      <span class="diary-hint">Fotky se na mapu umístí podle GPS z fotky, případně podle polohy telefonu.</span>
+      <input type="file" id="diary-file-input" accept="image/*" multiple style="display:none">
+    </div>
+    <div id="diary-map" class="diary-map"></div>
+    <div class="diary-timeline" id="diary-timeline"></div>
+  </div>${tripFooter()}`;
+
+  document.getElementById('diary-upload-btn').addEventListener('click', () => {
+    document.getElementById('diary-file-input').click();
+  });
+  document.getElementById('diary-file-input').addEventListener('change', diaryHandleFiles);
+
+  diaryInitMap();
+  diaryRender(data);
+}
+
+function diaryInitMap() {
+  if (diaryMap) { try { diaryMap.remove(); } catch {} diaryMap = null; }
+  diaryMarkers = {};
+  diaryPlacingId = null;
+  diaryMap = L.map('diary-map');
+  diaryMap.setView([36.2, 131.5], 5);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(diaryMap);
+  diaryMap.on('click', (e) => {
+    if (!diaryPlacingId) return;
+    diarySetPosition(diaryPlacingId, e.latlng.lat, e.latlng.lng);
+  });
+}
+
+function diaryRender(data) {
+  const withPos = data.filter(p => p.lat != null && p.lng != null);
+  withPos.forEach(diaryAddMarker);
+  if (withPos.length) {
+    const bounds = L.latLngBounds(withPos.map(p => [p.lat, p.lng]));
+    diaryMap.fitBounds(bounds.pad(0.2), { maxZoom: 12 });
+  }
+  diaryRenderTimeline(data);
+}
+
+function diaryAddMarker(p) {
+  const icon = L.divIcon({
+    className: 'diary-pin',
+    html: `<img src="${p.url}" alt="">`,
+    iconSize: [46, 46], iconAnchor: [23, 23], popupAnchor: [0, -26],
+  });
+  const m = L.marker([p.lat, p.lng], { icon }).addTo(diaryMap);
+  m.bindPopup(diaryPopupHtml(p), { minWidth: 220, maxWidth: 260 });
+  m.on('dragend', async () => {
+    const { lat, lng } = m.getLatLng();
+    m.dragging.disable();
+    if (await diaryUpdate(p.id, { lat, lng })) showToast('Poloha fotky upravena.', 'success');
+  });
+  diaryMarkers[p.id] = m;
+}
+
+function diaryPopupHtml(p) {
+  const dt = p.taken_at ? new Date(p.taken_at) : null;
+  const when = dt && !isNaN(dt)
+    ? `${dt.getDate()}.${dt.getMonth() + 1}.${dt.getFullYear()} · ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`
+    : 'bez data';
+  const online = isOnline;
+  return `<div class="diary-popup">
+    <a href="${p.url}" target="_blank" rel="noopener"><img src="${p.url}" alt=""></a>
+    <div class="diary-popup-when"><i class="ti ti-clock"></i> ${when}</div>
+    <input class="diary-popup-caption" id="diary-cap-${p.id}" placeholder="Popisek…"
+           value="${esc(p.caption || '')}" ${online ? '' : 'disabled'}
+           onchange="diarySaveCaption('${p.id}')">
+    ${online ? `<div class="diary-popup-actions">
+      <button class="btn-icon" onclick="diaryStartMove('${p.id}')" title="Posunout pin"><i class="ti ti-arrows-move"></i></button>
+      <button class="btn-icon delete" onclick="diaryConfirmDelete('${p.id}')" title="Smazat"><i class="ti ti-trash"></i></button>
+    </div>` : ''}
+  </div>`;
+}
+
+function diaryRenderTimeline(data) {
+  const tl = document.getElementById('diary-timeline');
+  if (!tl) return;
+  if (!data.length) {
+    tl.innerHTML = emptyState('ti-camera', 'Zatím žádné fotky', 'Přidej první fotku tlačítkem nahoře.');
+    return;
+  }
+  const sorted = data.slice().sort((a, b) =>
+    (a.taken_at || a.created_at || '').localeCompare(b.taken_at || b.created_at || ''));
+  let lastDay = '';
+  tl.innerHTML = sorted.map(p => {
+    const iso = (p.taken_at || p.created_at || '').slice(0, 10);
+    const day = iso ? formatDateCZ(iso) : '—';
+    const dayLabel = day !== lastDay ? `<div class="diary-tl-day">${day}</div>` : '';
+    lastDay = day;
+    const noPos = p.lat == null || p.lng == null;
+    return `${dayLabel}<div class="diary-tl-item${noPos ? ' nopos' : ''}" onclick="diaryFocus('${p.id}')" title="${esc(p.caption || '')}">
+      <img src="${p.url}" loading="lazy" alt="">
+      ${noPos ? '<span class="diary-tl-nopin" title="Bez polohy"><i class="ti ti-map-pin-off"></i></span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+/* ── Nahrávání ── */
+async function diaryHandleFiles(e) {
+  const files = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (!files.length) return;
+  if (!isOnline) { showToast('Nahrávání je dostupné jen online.', 'error'); return; }
+  diaryGeoPromise = null; // čerstvá poloha pro každou dávku
+  const btn = document.getElementById('diary-upload-btn');
+  let ok = 0, fail = 0;
+  for (let i = 0; i < files.length; i++) {
+    if (btn) btn.innerHTML = `<i class="ti ti-loader-2" style="animation:spin .8s linear infinite"></i> Nahrávám ${i + 1}/${files.length}…`;
+    try { await diaryUploadOne(files[i]); ok++; }
+    catch (err) { console.error('Upload fotky selhal:', err); fail++; }
+  }
+  if (ok)   showToast(`Nahráno: ${ok} ${ok === 1 ? 'fotka' : ok <= 4 ? 'fotky' : 'fotek'}.`, 'success');
+  if (fail) showToast(`Nepodařilo se nahrát: ${fail}.`, 'error');
+  loadDiary();
+}
+
+async function diaryUploadOne(file) {
+  // 1) EXIF — GPS a čas pořízení
+  let exif = null;
+  try { exif = await exifr.parse(file, { gps: true }); } catch {}
+  let lat = exif?.latitude ?? null;
+  let lng = exif?.longitude ?? null;
+  let takenAt = exif?.DateTimeOriginal || exif?.CreateDate || (file.lastModified ? new Date(file.lastModified) : null);
+
+  // 2) fallback — aktuální poloha telefonu
+  if (lat == null || lng == null) {
+    const pos = await diaryGetLocation();
+    if (pos) { lat = pos.lat; lng = pos.lng; }
+  }
+
+  // 3) zmenšit a nahrát
+  const blob = await diaryResize(file);
+  const path = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const { error: upErr } = await db.storage.from('photos').upload(path, blob, { contentType: 'image/jpeg' });
+  if (upErr) throw upErr;
+  const { data: pub } = db.storage.from('photos').getPublicUrl(path);
+
+  // 4) záznam do tabulky
+  const { error } = await db.from('photos').insert({
+    storage_path: path,
+    url: pub.publicUrl,
+    lat, lng,
+    taken_at: (takenAt instanceof Date && !isNaN(takenAt)) ? takenAt.toISOString() : null,
+  });
+  if (error) throw error;
+}
+
+function diaryGetLocation() {
+  if (!('geolocation' in navigator)) return Promise.resolve(null);
+  if (!diaryGeoPromise) {
+    diaryGeoPromise = new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+        () => resolve(null),
+        { timeout: 8000, maximumAge: 60000 }
+      );
+    });
+  }
+  return diaryGeoPromise;
+}
+
+async function diaryResize(file, maxDim = 1600, quality = 0.82) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = () => rej(new Error('Obrázek nelze načíst'));
+      i.src = url;
+    });
+    const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', quality));
+    if (!blob) throw new Error('Zmenšení fotky selhalo');
+    return blob;
+  } finally { URL.revokeObjectURL(url); }
+}
+
+/* ── Úpravy & mazání ── */
+async function diaryUpdate(id, fields) {
+  const { error } = await db.from('photos').update(fields).eq('id', id);
+  if (error) { showToast('Chyba při ukládání.', 'error'); return false; }
+  setCache('photos', getCache('photos').map(p => p.id === id ? { ...p, ...fields } : p));
+  return true;
+}
+
+async function diarySaveCaption(id) {
+  const inp = document.getElementById(`diary-cap-${id}`);
+  if (!inp) return;
+  if (await diaryUpdate(id, { caption: inp.value.trim() || null })) {
+    showToast('Popisek uložen.', 'success');
+    diaryRenderTimeline(getCache('photos'));
+  }
+}
+
+function diaryStartMove(id) {
+  const m = diaryMarkers[id];
+  if (!m) return;
+  m.closePopup();
+  m.dragging.enable();
+  showToast('Přetáhni pin na správné místo.', 'info');
+}
+
+async function diarySetPosition(id, lat, lng) {
+  diaryPlacingId = null;
+  if (await diaryUpdate(id, { lat, lng })) {
+    showToast('Fotka umístěna na mapu.', 'success');
+    loadDiary();
+  }
+}
+
+function diaryFocus(id) {
+  const p = getCache('photos').find(x => x.id === id);
+  if (!p) return;
+  if (p.lat != null && p.lng != null && diaryMarkers[id]) {
+    document.getElementById('diary-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    diaryMap.flyTo([p.lat, p.lng], Math.max(diaryMap.getZoom(), 13));
+    setTimeout(() => diaryMarkers[id].openPopup(), 650);
+  } else if (isOnline) {
+    diaryPlacingId = id;
+    document.getElementById('diary-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    showToast('Klepni do mapy na místo, kde fotka vznikla.', 'info');
+  }
+}
+
+function diaryConfirmDelete(id) {
+  if (!isOnline) { showToast('Mazání je dostupné jen online.', 'error'); return; }
+  document.getElementById('confirm-overlay').style.display = 'flex';
+  document.getElementById('confirm-ok-btn').onclick = () => diaryExecuteDelete(id);
+}
+
+async function diaryExecuteDelete(id) {
+  const p = getCache('photos').find(x => x.id === id);
+  const { error } = await db.from('photos').delete().eq('id', id);
+  if (!error && p?.storage_path) {
+    try { await db.storage.from('photos').remove([p.storage_path]); } catch {}
+  }
+  closeConfirm();
+  if (!error) { showToast('Fotka smazána.', 'success'); loadDiary(); }
+  else        { showToast('Chyba při mazání.', 'error'); }
 }
 
 /* ════ TOAST ════════════════════════════════════════════════ */

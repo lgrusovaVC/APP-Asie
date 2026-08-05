@@ -1,5 +1,5 @@
 // Service Worker — Korea & Japonsko Trip Planner
-const CACHE_NAME = 'asie-trip-v1';
+const CACHE_NAME = 'asie-trip-v2';
 
 const STATIC_ASSETS = [
   '/',
@@ -14,6 +14,9 @@ const CDN_ASSETS = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
   'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/tabler-icons.min.css',
   'https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800;900&display=swap',
+  'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css',
+  'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js',
+  'https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js',
 ];
 
 // Install — cache static + CDN assets
