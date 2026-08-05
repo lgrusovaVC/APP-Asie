@@ -1676,13 +1676,12 @@ function buildCalEventMap(flights, accs, acts, trans) {
     let d = new Date(a.checkin + 'T00:00:00');
     const end = new Date(a.checkout + 'T00:00:00');
     const localKey = dt => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
-    const checkoutEve = localKey(new Date(end.getTime() - 86400000));
-    while (d < end) {
+    while (d <= end) {
       const key = localKey(d);
       const ciTime = a.checkin_time ? a.checkin_time.slice(0,5) : null;
       const coTime = a.checkout_time ? a.checkout_time.slice(0,5) : null;
       const isCheckin  = key === a.checkin;
-      const isCheckout = key === checkoutEve;
+      const isCheckout = key === a.checkout;
       const sub  = isCheckin  ? `${ciTime  ? ciTime+' '  : ''}Check-in`
                  : isCheckout ? `${coTime ? coTime+' ' : ''}Check-out`
                  : null;
