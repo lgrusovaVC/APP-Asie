@@ -1961,6 +1961,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   background: var(--alt);
   z-index: 0;
 }
+.diary-map.moving { outline: 2px dashed var(--acc); cursor: crosshair; }
 @media (max-width: 640px) { .diary-map { height: 230px; } }
 
 /* klikatelné statistiky v hlavičce */
