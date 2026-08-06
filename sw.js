@@ -1,5 +1,5 @@
 // Service Worker — Korea & Japonsko Trip Planner
-const CACHE_NAME = 'asie-trip-v2';
+const CACHE_NAME = 'asie-trip-v3';
 
 const STATIC_ASSETS = [
   '/',
@@ -17,6 +17,8 @@ const CDN_ASSETS = [
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css',
   'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js',
   'https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js',
+  'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.min.css',
+  'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.min.js',
 ];
 
 // Install — cache static + CDN assets

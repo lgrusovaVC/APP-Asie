@@ -1990,10 +1990,35 @@ function closePhotoModal() {
 }
 
 /* ════ DENÍK — fotky na mapě ════════════════════════════════ */
+// Fallback pro fotky bez GPS: podle data pořízení se umístí do města dle itineráře
+const DIARY_ITINERARY = [
+  { from: '2026-09-05', to: '2026-09-09', city: 'Seoul',     lat: 37.5665, lng: 126.9780 },
+  { from: '2026-09-09', to: '2026-09-10', city: 'Gyeongju',  lat: 35.8562, lng: 129.2247 },
+  { from: '2026-09-10', to: '2026-09-14', city: 'Busan',     lat: 35.1796, lng: 129.0756 },
+  { from: '2026-09-14', to: '2026-09-16', city: 'Hiroshima', lat: 34.3853, lng: 132.4553 },
+  { from: '2026-09-16', to: '2026-09-20', city: 'Kyoto',     lat: 35.0116, lng: 135.7681 },
+  { from: '2026-09-20', to: '2026-09-27', city: 'Tokyo',     lat: 35.6762, lng: 139.6503 },
+];
+
+function diaryItineraryFallback(takenAt) {
+  if (!(takenAt instanceof Date) || isNaN(takenAt)) return null;
+  const iso = `${takenAt.getFullYear()}-${String(takenAt.getMonth() + 1).padStart(2, '0')}-${String(takenAt.getDate()).padStart(2, '0')}`;
+  const stop = DIARY_ITINERARY.find(s => iso >= s.from && iso < s.to);
+  if (!stop) return null;
+  // malý náhodný rozptyl (~±300 m), aby se piny ze stejného dne nepřekrývaly
+  return {
+    lat: stop.lat + (Math.random() - 0.5) * 0.006,
+    lng: stop.lng + (Math.random() - 0.5) * 0.006,
+  };
+}
+
 let diaryMap = null;
+let diaryCluster = null;
 let diaryMarkers = {};
 let diaryPlacingId = null;
 let diaryGeoPromise = null;
+let diaryView = 'map';       // 'map' | 'cities'
+let diaryCityFilter = null;  // název města, nebo null = vše
 
 async function loadDiary() {
   const data = await fetchData('photos', 'taken_at');
@@ -2018,24 +2043,110 @@ async function loadDiary() {
       <button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}" id="diary-upload-btn"${isOnline ? '' : ' disabled'}>
         <i class="ti ti-camera-plus"></i><span> Přidat fotky</span>
       </button>
-      <span class="diary-hint">Fotky se na mapu umístí podle GPS z fotky, případně podle polohy telefonu.</span>
+      <div class="filter-bar diary-viewbar">
+        <button class="filter-btn ${diaryView === 'map' ? 'active' : ''}" onclick="diarySetView('map')">Mapa</button>
+        <button class="filter-btn ${diaryView === 'cities' ? 'active' : ''}" onclick="diarySetView('cities')">Podle měst</button>
+      </div>
       <input type="file" id="diary-file-input" accept="image/*" multiple style="display:none">
     </div>
-    <div id="diary-map" class="diary-map"></div>
-    <div class="diary-timeline" id="diary-timeline"></div>
+    <div id="diary-view"></div>
   </div>${tripFooter()}`;
 
   document.getElementById('diary-upload-btn').addEventListener('click', () => {
+    // dotaz na polohu spustíme hned při kliknutí — prohlížeč pak stihne
+    // zobrazit dotaz na oprávnění a poloha je připravená, než vybereš fotky
+    diaryGeoPromise = null;
+    diaryGetLocation();
     document.getElementById('diary-file-input').click();
   });
   document.getElementById('diary-file-input').addEventListener('change', diaryHandleFiles);
 
+  diaryRenderView(data);
+}
+
+function diarySetView(v) {
+  diaryView = v;
+  diaryCityFilter = null;
+  loadDiary();
+}
+
+function diaryOpenCity(city) {
+  diaryCityFilter = city;
+  diaryView = 'map';
+  loadDiary();
+}
+
+function diaryClearCity() {
+  diaryCityFilter = null;
+  loadDiary();
+}
+
+// ke kterému městu z itineráře má fotka nejblíž
+function diaryCityOf(p) {
+  if (p.lat == null || p.lng == null) return null;
+  let best = null, bd = Infinity;
+  DIARY_ITINERARY.forEach(s => {
+    const d = (s.lat - p.lat) ** 2 + (s.lng - p.lng) ** 2;
+    if (d < bd) { bd = d; best = s.city; }
+  });
+  return best;
+}
+
+function diaryRenderView(data) {
+  const el = document.getElementById('diary-view');
+  if (!el) return;
+
+  if (diaryView === 'cities') {
+    if (diaryMap) { try { diaryMap.remove(); } catch {} diaryMap = null; }
+    diaryRenderCities(el, data);
+    return;
+  }
+
+  const filtered = diaryCityFilter
+    ? data.filter(p => (diaryCityOf(p) || 'Bez polohy') === diaryCityFilter)
+    : data;
+
+  el.innerHTML = `
+    ${diaryCityFilter ? `<div class="diary-chip">
+      <i class="ti ti-map-pin"></i><span>${esc(diaryCityFilter)}</span>
+      <button onclick="diaryClearCity()" title="Zobrazit vše"><i class="ti ti-x"></i></button>
+    </div>` : ''}
+    <div id="diary-map" class="diary-map"></div>
+    <div class="diary-timeline" id="diary-timeline"></div>`;
+
   diaryInitMap();
-  diaryRender(data);
+  diaryRender(filtered);
+}
+
+function diaryRenderCities(el, data) {
+  if (!data.length) {
+    el.innerHTML = emptyState('ti-camera', 'Zatím žádné fotky', 'Přidej první fotku tlačítkem nahoře.');
+    return;
+  }
+  const groups = {};
+  data.forEach(p => {
+    const c = diaryCityOf(p) || 'Bez polohy';
+    (groups[c] = groups[c] || []).push(p);
+  });
+  const order = [...DIARY_ITINERARY.map(s => s.city), 'Bez polohy'];
+  el.innerHTML = '<div class="diary-city-grid">' + order.filter(c => groups[c]).map(c => {
+    const ph = groups[c];
+    const cover = ph[ph.length - 1];
+    const n = ph.length;
+    return `<div class="diary-city-card" onclick="diaryOpenCity('${c}')">
+      <img src="${cover.url}" loading="lazy" alt="">
+      <div class="diary-city-overlay"></div>
+      <div class="diary-city-info">
+        <span class="diary-city-name">${esc(c)}</span>
+        <span class="diary-city-count">${n} ${n === 1 ? 'fotka' : n <= 4 ? 'fotky' : 'fotek'}</span>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
 }
 
 function diaryInitMap() {
   if (diaryMap) { try { diaryMap.remove(); } catch {} diaryMap = null; }
+  diaryCluster = null;
   diaryMarkers = {};
   diaryPlacingId = null;
   diaryMap = L.map('diary-map');
@@ -2053,7 +2164,17 @@ function diaryInitMap() {
 
 function diaryRender(data) {
   const withPos = data.filter(p => p.lat != null && p.lng != null);
-  withPos.forEach(diaryAddMarker);
+  diaryCluster = L.markerClusterGroup({
+    maxClusterRadius: 60,
+    showCoverageOnHover: false,
+    iconCreateFunction: (c) => L.divIcon({
+      className: 'diary-cluster',
+      html: `<span>${c.getChildCount()}</span>`,
+      iconSize: [42, 42],
+    }),
+  });
+  withPos.forEach(p => diaryCluster.addLayer(diaryMakeMarker(p)));
+  diaryMap.addLayer(diaryCluster);
   if (withPos.length) {
     const bounds = L.latLngBounds(withPos.map(p => [p.lat, p.lng]));
     diaryMap.fitBounds(bounds.pad(0.2), { maxZoom: 12 });
@@ -2061,13 +2182,13 @@ function diaryRender(data) {
   diaryRenderTimeline(data);
 }
 
-function diaryAddMarker(p) {
+function diaryMakeMarker(p) {
   const icon = L.divIcon({
     className: 'diary-pin',
     html: `<img src="${p.url}" alt="">`,
     iconSize: [46, 46], iconAnchor: [23, 23], popupAnchor: [0, -26],
   });
-  const m = L.marker([p.lat, p.lng], { icon }).addTo(diaryMap);
+  const m = L.marker([p.lat, p.lng], { icon });
   m.bindPopup(diaryPopupHtml(p), { minWidth: 220, maxWidth: 260 });
   m.on('dragend', async () => {
     const { lat, lng } = m.getLatLng();
@@ -2075,6 +2196,7 @@ function diaryAddMarker(p) {
     if (await diaryUpdate(p.id, { lat, lng })) showToast('Poloha fotky upravena.', 'success');
   });
   diaryMarkers[p.id] = m;
+  return m;
 }
 
 function diaryPopupHtml(p) {
@@ -2109,7 +2231,7 @@ function diaryRenderTimeline(data) {
   tl.innerHTML = sorted.map(p => {
     const iso = (p.taken_at || p.created_at || '').slice(0, 10);
     const day = iso ? formatDateCZ(iso) : '—';
-    const dayLabel = day !== lastDay ? `<div class="diary-tl-day">${day}</div>` : '';
+    const dayLabel = day !== lastDay ? `<div class="diary-tl-day" onclick="diaryFocusDay('${iso}')" title="Přiblížit mapu na tento den">${day}</div>` : '';
     lastDay = day;
     const noPos = p.lat == null || p.lng == null;
     return `${dayLabel}<div class="diary-tl-item${noPos ? ' nopos' : ''}" onclick="diaryFocus('${p.id}')" title="${esc(p.caption || '')}">
@@ -2125,16 +2247,16 @@ async function diaryHandleFiles(e) {
   e.target.value = '';
   if (!files.length) return;
   if (!isOnline) { showToast('Nahrávání je dostupné jen online.', 'error'); return; }
-  diaryGeoPromise = null; // čerstvá poloha pro každou dávku
   const btn = document.getElementById('diary-upload-btn');
-  let ok = 0, fail = 0;
+  let ok = 0, fail = 0, noPos = 0;
   for (let i = 0; i < files.length; i++) {
     if (btn) btn.innerHTML = `<i class="ti ti-loader-2" style="animation:spin .8s linear infinite"></i> Nahrávám ${i + 1}/${files.length}…`;
-    try { await diaryUploadOne(files[i]); ok++; }
+    try { if (!await diaryUploadOne(files[i])) noPos++; ok++; }
     catch (err) { console.error('Upload fotky selhal:', err); fail++; }
   }
   if (ok)   showToast(`Nahráno: ${ok} ${ok === 1 ? 'fotka' : ok <= 4 ? 'fotky' : 'fotek'}.`, 'success');
   if (fail) showToast(`Nepodařilo se nahrát: ${fail}.`, 'error');
+  if (noPos) showToast(`${noPos === 1 ? 'Fotka nemá polohu' : `${noPos} fotek nemá polohu`} — klepni na ni v pásu pod mapou a pak do mapy.`, 'info');
   loadDiary();
 }
 
@@ -2146,20 +2268,26 @@ async function diaryUploadOne(file) {
   let lng = exif?.longitude ?? null;
   let takenAt = exif?.DateTimeOriginal || exif?.CreateDate || (file.lastModified ? new Date(file.lastModified) : null);
 
-  // 2) fallback — aktuální poloha telefonu
+  // 2) fallback — podle data fotky a itineráře (správné město)
+  if (lat == null || lng == null) {
+    const stop = diaryItineraryFallback(takenAt);
+    if (stop) { lat = stop.lat; lng = stop.lng; }
+  }
+
+  // 3) fallback — aktuální poloha telefonu
   if (lat == null || lng == null) {
     const pos = await diaryGetLocation();
     if (pos) { lat = pos.lat; lng = pos.lng; }
   }
 
-  // 3) zmenšit a nahrát
+  // 4) zmenšit a nahrát
   const blob = await diaryResize(file);
   const path = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
   const { error: upErr } = await db.storage.from('photos').upload(path, blob, { contentType: 'image/jpeg' });
   if (upErr) throw upErr;
   const { data: pub } = db.storage.from('photos').getPublicUrl(path);
 
-  // 4) záznam do tabulky
+  // 5) záznam do tabulky
   const { error } = await db.from('photos').insert({
     storage_path: path,
     url: pub.publicUrl,
@@ -2167,6 +2295,7 @@ async function diaryUploadOne(file) {
     taken_at: (takenAt instanceof Date && !isNaN(takenAt)) ? takenAt.toISOString() : null,
   });
   if (error) throw error;
+  return lat != null && lng != null;
 }
 
 function diaryGetLocation() {
@@ -2176,7 +2305,7 @@ function diaryGetLocation() {
       navigator.geolocation.getCurrentPosition(
         (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
         () => resolve(null),
-        { timeout: 8000, maximumAge: 60000 }
+        { timeout: 20000, maximumAge: 300000 }
       );
     });
   }
@@ -2216,7 +2345,10 @@ async function diarySaveCaption(id) {
   if (!inp) return;
   if (await diaryUpdate(id, { caption: inp.value.trim() || null })) {
     showToast('Popisek uložen.', 'success');
-    diaryRenderTimeline(getCache('photos'));
+    const data = getCache('photos') || [];
+    diaryRenderTimeline(diaryCityFilter
+      ? data.filter(p => (diaryCityOf(p) || 'Bez polohy') === diaryCityFilter)
+      : data);
   }
 }
 
@@ -2236,13 +2368,26 @@ async function diarySetPosition(id, lat, lng) {
   }
 }
 
+function diaryFocusDay(iso) {
+  if (!diaryMap) return;
+  const pts = (getCache('photos') || []).filter(p =>
+    (p.taken_at || p.created_at || '').slice(0, 10) === iso && p.lat != null && p.lng != null);
+  if (!pts.length) { showToast('Fotky z tohoto dne nemají polohu.', 'info'); return; }
+  document.getElementById('diary-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  diaryMap.fitBounds(L.latLngBounds(pts.map(p => [p.lat, p.lng])).pad(0.3), { maxZoom: 14 });
+}
+
 function diaryFocus(id) {
   const p = getCache('photos').find(x => x.id === id);
   if (!p) return;
   if (p.lat != null && p.lng != null && diaryMarkers[id]) {
     document.getElementById('diary-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    diaryMap.flyTo([p.lat, p.lng], Math.max(diaryMap.getZoom(), 13));
-    setTimeout(() => diaryMarkers[id].openPopup(), 650);
+    const m = diaryMarkers[id];
+    if (diaryCluster) diaryCluster.zoomToShowLayer(m, () => m.openPopup());
+    else {
+      diaryMap.flyTo([p.lat, p.lng], Math.max(diaryMap.getZoom(), 13));
+      setTimeout(() => m.openPopup(), 650);
+    }
   } else if (isOnline) {
     diaryPlacingId = id;
     document.getElementById('diary-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
