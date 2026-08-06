@@ -1990,26 +1990,31 @@ function closePhotoModal() {
 }
 
 /* ════ DENÍK — fotky na mapě ════════════════════════════════ */
-// Fallback pro fotky bez GPS: podle data pořízení se umístí do města dle itineráře
-const DIARY_ITINERARY = [
-  { from: '2026-09-05', to: '2026-09-09', city: 'Seoul',     lat: 37.5665, lng: 126.9780 },
-  { from: '2026-09-09', to: '2026-09-10', city: 'Gyeongju',  lat: 35.8562, lng: 129.2247 },
-  { from: '2026-09-10', to: '2026-09-14', city: 'Busan',     lat: 35.1796, lng: 129.0756 },
-  { from: '2026-09-14', to: '2026-09-16', city: 'Hiroshima', lat: 34.3853, lng: 132.4553 },
-  { from: '2026-09-16', to: '2026-09-20', city: 'Kyoto',     lat: 35.0116, lng: 135.7681 },
-  { from: '2026-09-20', to: '2026-09-27', city: 'Tokyo',     lat: 35.6762, lng: 139.6503 },
-];
+// Geokódování přes Nominatim (OpenStreetMap) — max 1 dotaz/s
+let _diaryGeoNext = 0;
+async function diaryNominatim(url) {
+  const wait = Math.max(0, _diaryGeoNext - Date.now());
+  _diaryGeoNext = Date.now() + wait + 1100;
+  if (wait) await new Promise(r => setTimeout(r, wait));
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Nominatim ${res.status}`);
+  return res.json();
+}
 
-function diaryItineraryFallback(takenAt) {
-  if (!(takenAt instanceof Date) || isNaN(takenAt)) return null;
-  const iso = `${takenAt.getFullYear()}-${String(takenAt.getMonth() + 1).padStart(2, '0')}-${String(takenAt.getDate()).padStart(2, '0')}`;
-  const stop = DIARY_ITINERARY.find(s => iso >= s.from && iso < s.to);
-  if (!stop) return null;
-  // malý náhodný rozptyl (~±300 m), aby se piny ze stejného dne nepřekrývaly
-  return {
-    lat: stop.lat + (Math.random() - 0.5) * 0.006,
-    lng: stop.lng + (Math.random() - 0.5) * 0.006,
-  };
+// souřadnice → název města/místa (pro karty "Podle měst")
+async function diaryPlaceName(lat, lng) {
+  try {
+    const j = await diaryNominatim(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10&accept-language=cs`);
+    const a = j.address || {};
+    return a.city || a.town || a.village || a.municipality || a.county || a.state || j.name || null;
+  } catch { return null; }
+}
+
+// hledání místa podle textu (dialog umístění)
+async function diarySearchPlace(q) {
+  return diaryNominatim(
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&addressdetails=1&accept-language=cs&q=${encodeURIComponent(q)}`);
 }
 
 let diaryMap = null;
@@ -2081,15 +2086,10 @@ function diaryClearCity() {
   loadDiary();
 }
 
-// ke kterému městu z itineráře má fotka nejblíž
+// skupina fotky pro pohled "Podle měst" — skutečné místo z geokódování
 function diaryCityOf(p) {
   if (p.lat == null || p.lng == null) return null;
-  let best = null, bd = Infinity;
-  DIARY_ITINERARY.forEach(s => {
-    const d = (s.lat - p.lat) ** 2 + (s.lng - p.lng) ** 2;
-    if (d < bd) { bd = d; best = s.city; }
-  });
-  return best;
+  return p.place || 'Jinde';
 }
 
 function diaryRenderView(data) {
@@ -2128,12 +2128,18 @@ function diaryRenderCities(el, data) {
     const c = diaryCityOf(p) || 'Bez polohy';
     (groups[c] = groups[c] || []).push(p);
   });
-  const order = [...DIARY_ITINERARY.map(s => s.city), 'Bez polohy'];
+  // řazení skupin podle času první fotky; "Bez polohy" a "Jinde" na konec
+  const order = Object.keys(groups).sort((a, b) => {
+    const last = c => (c === 'Bez polohy' ? 2 : c === 'Jinde' ? 1 : 0);
+    if (last(a) !== last(b)) return last(a) - last(b);
+    const first = c => (groups[c][0].taken_at || groups[c][0].created_at || '');
+    return first(a).localeCompare(first(b));
+  });
   el.innerHTML = '<div class="diary-city-grid">' + order.filter(c => groups[c]).map(c => {
     const ph = groups[c];
     const cover = ph[ph.length - 1];
     const n = ph.length;
-    return `<div class="diary-city-card" onclick="diaryOpenCity('${c}')">
+    return `<div class="diary-city-card" data-city="${esc(c)}" onclick="diaryOpenCity(this.dataset.city)">
       <img src="${cover.url}" loading="lazy" alt="">
       <div class="diary-city-overlay"></div>
       <div class="diary-city-info">
@@ -2193,7 +2199,8 @@ function diaryMakeMarker(p) {
   m.on('dragend', async () => {
     const { lat, lng } = m.getLatLng();
     m.dragging.disable();
-    if (await diaryUpdate(p.id, { lat, lng })) showToast('Poloha fotky upravena.', 'success');
+    const place = await diaryPlaceName(lat, lng);
+    if (await diaryUpdate(p.id, { lat, lng, place })) showToast('Poloha fotky upravena.', 'success');
   });
   diaryMarkers[p.id] = m;
   return m;
@@ -2248,54 +2255,172 @@ async function diaryHandleFiles(e) {
   if (!files.length) return;
   if (!isOnline) { showToast('Nahrávání je dostupné jen online.', 'error'); return; }
   const btn = document.getElementById('diary-upload-btn');
-  let ok = 0, fail = 0, noPos = 0;
+  let ok = 0, fail = 0;
+  const unplaced = [];
   for (let i = 0; i < files.length; i++) {
     if (btn) btn.innerHTML = `<i class="ti ti-loader-2" style="animation:spin .8s linear infinite"></i> Nahrávám ${i + 1}/${files.length}…`;
-    try { if (!await diaryUploadOne(files[i])) noPos++; ok++; }
+    try {
+      const row = await diaryUploadOne(files[i]);
+      ok++;
+      if (row && row.lat == null) unplaced.push(row);
+    }
     catch (err) { console.error('Upload fotky selhal:', err); fail++; }
   }
   if (ok)   showToast(`Nahráno: ${ok} ${ok === 1 ? 'fotka' : ok <= 4 ? 'fotky' : 'fotek'}.`, 'success');
   if (fail) showToast(`Nepodařilo se nahrát: ${fail}.`, 'error');
-  if (noPos) showToast(`${noPos === 1 ? 'Fotka nemá polohu' : `${noPos} fotek nemá polohu`} — klepni na ni v pásu pod mapou a pak do mapy.`, 'info');
   loadDiary();
+  if (unplaced.length) diaryPlaceDialog(unplaced);
 }
 
 async function diaryUploadOne(file) {
   // 1) EXIF — GPS a čas pořízení
   let exif = null;
   try { exif = await exifr.parse(file, { gps: true }); } catch {}
-  let lat = exif?.latitude ?? null;
-  let lng = exif?.longitude ?? null;
-  let takenAt = exif?.DateTimeOriginal || exif?.CreateDate || (file.lastModified ? new Date(file.lastModified) : null);
+  const lat = exif?.latitude ?? null;
+  const lng = exif?.longitude ?? null;
+  const takenAt = exif?.DateTimeOriginal || exif?.CreateDate || (file.lastModified ? new Date(file.lastModified) : null);
 
-  // 2) fallback — podle data fotky a itineráře (správné město)
-  if (lat == null || lng == null) {
-    const stop = diaryItineraryFallback(takenAt);
-    if (stop) { lat = stop.lat; lng = stop.lng; }
-  }
-
-  // 3) fallback — aktuální poloha telefonu
-  if (lat == null || lng == null) {
-    const pos = await diaryGetLocation();
-    if (pos) { lat = pos.lat; lng = pos.lng; }
-  }
-
-  // 4) zmenšit a nahrát
+  // 2) zmenšit a nahrát
   const blob = await diaryResize(file);
   const path = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
   const { error: upErr } = await db.storage.from('photos').upload(path, blob, { contentType: 'image/jpeg' });
   if (upErr) throw upErr;
   const { data: pub } = db.storage.from('photos').getPublicUrl(path);
 
-  // 5) záznam do tabulky
-  const { error } = await db.from('photos').insert({
+  // 3) název místa (jen když má fotka GPS)
+  const place = (lat != null && lng != null) ? await diaryPlaceName(lat, lng) : null;
+
+  // 4) záznam do tabulky
+  const { data: row, error } = await db.from('photos').insert({
     storage_path: path,
     url: pub.publicUrl,
-    lat, lng,
+    lat, lng, place,
     taken_at: (takenAt instanceof Date && !isNaN(takenAt)) ? takenAt.toISOString() : null,
-  });
+  }).select().single();
   if (error) throw error;
-  return lat != null && lng != null;
+  return row;
+}
+
+/* ── Dialog umístění fotek bez GPS ── */
+let diaryPlaceQueue = [];
+let _diarySearchTimer = null;
+
+function diaryPlaceDialog(rows) {
+  diaryPlaceQueue = rows.slice();
+  diaryPlaceShow();
+}
+
+function diaryPlaceShow() {
+  let overlay = document.getElementById('diary-place-overlay');
+  if (!diaryPlaceQueue.length) {
+    if (overlay) overlay.remove();
+    loadDiary();
+    return;
+  }
+  const p = diaryPlaceQueue[0];
+  const n = diaryPlaceQueue.length;
+  const dt = p.taken_at ? new Date(p.taken_at) : null;
+  const when = dt && !isNaN(dt) ? `${dt.getDate()}.${dt.getMonth() + 1}. ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}` : '';
+  const html = `
+    <div class="modal diary-place-modal">
+      <div class="modal-header">
+        <h3>Kam patří tahle fotka?${n > 1 ? ` <span class="diary-place-count">(zbývá ${n})</span>` : ''}</h3>
+        <button class="btn-icon" onclick="diaryPlaceCloseAll()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="diary-place-photo">
+          <img src="${p.url}" alt="">
+          ${when ? `<span class="diary-place-when"><i class="ti ti-clock"></i> ${when}</span>` : ''}
+        </div>
+        <div class="diary-place-actions">
+          <button class="btn btn-primary" id="diary-place-phone-btn" onclick="diaryPlaceUsePhone()">
+            <i class="ti ti-current-location"></i> Použít polohu telefonu
+          </button>
+          <button class="btn btn-ghost" onclick="diaryPlaceSkip()">Zatím neumisťovat</button>
+        </div>
+        <div class="form-group diary-place-searchbox">
+          <label>…nebo zadej místo či adresu</label>
+          <input type="text" id="diary-place-search" placeholder="např. Yokohama Chinatown"
+                 autocomplete="off" oninput="diaryPlaceSearchInput(this.value)">
+          <div id="diary-place-results"></div>
+        </div>
+        ${n > 1 ? `<label class="diary-place-all">
+          <input type="checkbox" id="diary-place-apply-all"> Použít stejné místo i pro zbývající fotky (${n - 1})
+        </label>` : ''}
+      </div>
+    </div>`;
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'diary-place-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.style.display = 'flex';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = html;
+}
+
+function diaryPlaceSearchInput(q) {
+  clearTimeout(_diarySearchTimer);
+  q = q.trim();
+  const resEl = document.getElementById('diary-place-results');
+  if (!resEl) return;
+  if (q.length < 3) { resEl.innerHTML = ''; return; }
+  _diarySearchTimer = setTimeout(async () => {
+    resEl.innerHTML = '<div class="diary-place-note">Hledám…</div>';
+    try {
+      const results = await diarySearchPlace(q);
+      resEl.innerHTML = results.length
+        ? results.map((x, i) => {
+            const a = x.address || {};
+            const short = a.city || a.town || a.village || a.municipality || a.county || x.name || '';
+            return `<button class="diary-place-result" data-lat="${parseFloat(x.lat)}" data-lng="${parseFloat(x.lon)}"
+                      data-place="${esc(short)}"
+                      onclick="diaryPlaceApply(parseFloat(this.dataset.lat), parseFloat(this.dataset.lng), this.dataset.place)">
+                    <i class="ti ti-map-pin"></i> ${esc(x.display_name)}</button>`;
+          }).join('')
+        : '<div class="diary-place-note">Nic nenalezeno — zkus to napsat jinak.</div>';
+    } catch {
+      resEl.innerHTML = '<div class="diary-place-note">Hledání selhalo, zkus to za chvíli.</div>';
+    }
+  }, 500);
+}
+
+async function diaryPlaceUsePhone() {
+  const btn = document.getElementById('diary-place-phone-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .8s linear infinite"></i> Zjišťuji polohu…'; }
+  const pos = await new Promise((resolve) => {
+    if (!('geolocation' in navigator)) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => resolve(null),
+      { timeout: 15000, enableHighAccuracy: true }
+    );
+  });
+  if (!pos) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-current-location"></i> Použít polohu telefonu'; }
+    showToast('Polohu se nepodařilo zjistit — povol ji v prohlížeči, nebo zadej místo ručně.', 'error');
+    return;
+  }
+  const place = await diaryPlaceName(pos.lat, pos.lng);
+  diaryPlaceApply(pos.lat, pos.lng, place);
+}
+
+async function diaryPlaceApply(lat, lng, place) {
+  const all = document.getElementById('diary-place-apply-all')?.checked;
+  const targets = all ? diaryPlaceQueue.splice(0) : [diaryPlaceQueue.shift()];
+  for (const t of targets) await diaryUpdate(t.id, { lat, lng, place: place || null });
+  showToast(targets.length === 1 ? 'Fotka umístěna.' : `Umístěno fotek: ${targets.length}.`, 'success');
+  diaryPlaceShow();
+}
+
+function diaryPlaceSkip() {
+  diaryPlaceQueue.shift();
+  diaryPlaceShow();
+}
+
+function diaryPlaceCloseAll() {
+  diaryPlaceQueue = [];
+  diaryPlaceShow();
 }
 
 function diaryGetLocation() {
@@ -2362,7 +2487,8 @@ function diaryStartMove(id) {
 
 async function diarySetPosition(id, lat, lng) {
   diaryPlacingId = null;
-  if (await diaryUpdate(id, { lat, lng })) {
+  const place = await diaryPlaceName(lat, lng);
+  if (await diaryUpdate(id, { lat, lng, place })) {
     showToast('Fotka umístěna na mapu.', 'success');
     loadDiary();
   }

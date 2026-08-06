@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS photos (
   lat          DOUBLE PRECISION,          -- NULL = fotka bez polohy
   lng          DOUBLE PRECISION,
   taken_at     TIMESTAMPTZ,               -- datum a čas pořízení (z EXIF)
+  place        TEXT,                      -- název místa/města (reverzní geokódování)
   caption      TEXT,
   created_at   TIMESTAMPTZ DEFAULT NOW(),
   updated_at   TIMESTAMPTZ DEFAULT NOW()
