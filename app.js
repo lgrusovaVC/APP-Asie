@@ -2322,7 +2322,7 @@ function diaryLbRender() {
       <div class="diary-lb-fields">
         <input id="diary-lb-place" placeholder="Místo…" value="${esc(p.place || '')}"
                ${online ? '' : 'disabled'} onchange="diaryLbSavePlace('${p.id}')">
-        <label class="diary-lb-all"><input type="checkbox" id="diary-lb-place-all"> použít i pro ostatní fotky z tohoto místa</label>
+        ${online ? '<label class="diary-lb-all"><input type="checkbox" id="diary-lb-place-all"> použít i pro ostatní fotky z tohoto místa</label>' : ''}
         <input id="diary-lb-caption" placeholder="Popisek…" value="${esc(p.caption || '')}"
                ${online ? '' : 'disabled'} onchange="diaryLbSaveCaption('${p.id}')">
       </div>
