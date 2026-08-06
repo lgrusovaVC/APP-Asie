@@ -328,7 +328,7 @@ function tripMapSVG() {
 const KANJI = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
 
 /* ════ PAGE HEADER HELPER ═══════════════════════════════════ */
-function pageHeader({ num, label, h1, accentWord, desc, stats, addSection, addLabel }) {
+function pageHeader({ num, label, h1, accentWord, desc, stats, addSection, addLabel, addHtml }) {
   const kanji  = KANJI[num] || num;
   const h1Html = accentWord ? h1.replace(accentWord, `<em>${accentWord}</em>`) : h1;
 
@@ -336,7 +336,7 @@ function pageHeader({ num, label, h1, accentWord, desc, stats, addSection, addLa
     <button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}"
             data-add="${addSection}"${isOnline ? '' : ' disabled'}>
       <i class="ti ti-plus"></i><span class="btn-add-text"> ${addLabel || 'Přidat'}</span>
-    </button>` : '';
+    </button>` : (addHtml || '');
 
   const statsItemsHtml = (stats || []).map(s => `
     <div class="stats-strip-item${s.click ? ' stats-strip-click' : ''}${s.active ? ' active' : ''}"${s.click ? ` onclick="${s.click}"` : ''}>
@@ -2064,16 +2064,14 @@ async function loadDiary() {
   el.innerHTML = pageHeader({
     num: 8, label: 'Deník',
     h1: 'Naše cesta v obrazech', accentWord: 'v obrazech',
-    desc: 'Klepnutím na počty vpravo přepneš pohled: galerie · místa · dny',
+    desc: 'Zážitky, dojmy a vzpomínky, které nemizí',
     stats,
+    addHtml: `<button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}" id="diary-upload-btn"${isOnline ? '' : ' disabled'}>
+      <i class="ti ti-camera-plus"></i><span class="btn-add-text"> Přidat fotky</span>
+    </button>`,
   }) + `
   <div class="section-body">
-    <div class="diary-toolbar">
-      <button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}" id="diary-upload-btn"${isOnline ? '' : ' disabled'}>
-        <i class="ti ti-camera-plus"></i><span> Přidat fotky</span>
-      </button>
-      <input type="file" id="diary-file-input" accept="image/*" multiple style="display:none">
-    </div>
+    <input type="file" id="diary-file-input" accept="image/*" multiple style="display:none">
     <div id="diary-map" class="diary-map"></div>
     <div id="diary-cards"></div>
     <div class="diary-timeline" id="diary-timeline"></div>

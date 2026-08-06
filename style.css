@@ -1018,7 +1018,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 #section-accommodations.active, #section-dashboard.active,
 #section-flights.active, #section-activities.active,
 #section-priprava.active, #section-budget.active,
-#section-calendar.active { display: flex; flex-direction: column; min-height: 100dvh; }
+#section-calendar.active, #section-diary.active { display: flex; flex-direction: column; min-height: 100dvh; }
 
 #section-accommodations #accommodations-content,
 #section-dashboard #dashboard-content,
@@ -1026,14 +1026,16 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 #section-activities #activities-content,
 #section-priprava #priprava-content,
 #section-budget #budget-content,
-#section-calendar #calendar-content { display: flex; flex-direction: column; flex: 1; }
+#section-calendar #calendar-content,
+#section-diary #diary-content { display: flex; flex-direction: column; flex: 1; }
 
 #accommodations-content .section-body,
 #flights-content .section-body,
 #activities-content .section-body,
 #priprava-content .section-body,
 #budget-content .section-body,
-#calendar-content .section-body { flex: 1; }
+#calendar-content .section-body,
+#diary-content .section-body { flex: 1; }
 
 #accommodations-content .cards-grid { gap: 16px; border: none; }
 #accommodations-content .hotel-name { color: var(--sb-accent); }
