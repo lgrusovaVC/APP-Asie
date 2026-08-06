@@ -2058,7 +2058,7 @@ async function loadDiary() {
     { value: `${places.size}`, label: places.size === 1 ? 'místo' : places.size <= 4 ? 'místa' : 'míst',
       click: "diarySetView('places')", active: diaryView === 'places' },
     { value: `${data.length}`, label: data.length === 1 ? 'fotka' : data.length <= 4 ? 'fotky' : 'fotek',
-      click: 'diaryOpenGallery()' },
+      click: "diarySetView('gallery')", active: diaryView === 'gallery' },
   ];
 
   const el = document.getElementById('diary-content');
@@ -2073,7 +2073,7 @@ async function loadDiary() {
   }) + `
   <div class="section-body">
     <input type="file" id="diary-file-input" accept="image/*" multiple style="display:none">
-    <div id="diary-map" class="diary-map"></div>
+    ${diaryView === 'gallery' ? '' : '<div id="diary-map" class="diary-map"></div>'}
     <div id="diary-cards"></div>
     <div class="diary-timeline" id="diary-timeline"></div>
   </div>${tripFooter()}`;
@@ -2087,7 +2087,8 @@ async function loadDiary() {
   });
   document.getElementById('diary-file-input').addEventListener('change', diaryHandleFiles);
 
-  diaryInitMap();
+  if (document.getElementById('diary-map')) diaryInitMap();
+  else diaryMap = null;
   diaryRenderAll();
 }
 
@@ -2209,13 +2210,16 @@ function diaryRenderCards(data) {
       return `<div class="diary-place-card${diaryPlaceFilter === c ? ' active' : ''}"
                    data-place="${esc(c)}" onclick="diaryTogglePlace(this.dataset.place)">
         <img src="${cover.url}" loading="lazy" alt="">
-        <div class="diary-city-overlay"></div>
-        <div class="diary-city-info">
-          <span class="diary-city-name">${esc(c)}</span>
-          <span class="diary-city-count">${ph.length}</span>
-        </div>
+        <div class="diary-place-overlay"></div>
+        <span class="diary-place-name">${esc(c)}</span>
+        <span class="diary-place-photocount">${ph.length}</span>
       </div>`;
     }).join('') + '</div>';
+  } else if (diaryView === 'gallery') {
+    el.innerHTML = '<div class="diary-gallery">' + diarySorted(data).map(p =>
+      `<div class="diary-gallery-item" onclick="diaryOpenLb('${p.id}')" title="${esc(p.caption || '')}">
+        <img src="${p.url}" loading="lazy" alt="">
+      </div>`).join('') + '</div>';
   } else if (diaryView === 'days') {
     const groups = {};
     diarySorted(data).forEach(p => {
@@ -2260,12 +2264,6 @@ function diaryRenderTimeline(data) {
 }
 
 /* ── Fotogalerie (modal) ── */
-function diaryOpenGallery() {
-  const list = diarySorted(getCache('photos') || []);
-  if (!list.length) { showToast('Zatím žádné fotky.', 'info'); return; }
-  diaryLbShow(list, 0);
-}
-
 function diaryOpenLb(id) {
   const list = diarySorted(diaryFiltered(getCache('photos') || []));
   const i = list.findIndex(x => x.id === id);
@@ -2318,7 +2316,7 @@ function diaryLbRender() {
       <div class="diary-lb-actions">
         ${p.lat != null && p.lng != null ? `
           <button class="btn btn-ghost" onclick="diaryLbShowOnMap('${p.id}')"><i class="ti ti-map-pin"></i> Na mapě</button>
-          ${online ? `<button class="btn btn-ghost" onclick="diaryLbMovePin('${p.id}')"><i class="ti ti-arrows-move"></i> Posunout pin</button>` : ''}`
+          ${online ? `<button class="btn btn-ghost" onclick="diaryLbMovePin('${p.id}')"><i class="ti ti-arrows-move"></i> Přemístit pin</button>` : ''}`
         : (online ? `<button class="btn btn-ghost" onclick="diaryLbPlacePhoto('${p.id}')"><i class="ti ti-map-pin-plus"></i> Umístit na mapu</button>` : '')}
         ${online ? `<button class="btn btn-ghost diary-lb-del" onclick="diaryLbDelete('${p.id}')"><i class="ti ti-trash"></i></button>` : ''}
       </div>
