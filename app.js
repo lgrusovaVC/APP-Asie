@@ -3,6 +3,7 @@
 // ============================================================
 
 /* ════ STATE ════════════════════════════════════════════════ */
+const IS_PUBLIC = window.IS_PUBLIC === true; // veřejná verze jen pro čtení
 let db = null;
 let currentSection = 'dashboard';
 let isOnline = navigator.onLine;
@@ -92,6 +93,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       : t;
   }
 
+  if (IS_PUBLIC) { showApp(); navigateTo('dashboard'); return; }
+
   const session = await getSession();
   if (session) { showApp(); navigateTo('dashboard'); }
   else          { showLogin(); }
@@ -125,6 +128,7 @@ function initSupabase() {
 async function getSession() { const { data: { session } } = await db.auth.getSession(); return session; }
 
 function setupAuthListeners() {
+  if (IS_PUBLIC) return;
   document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('login-email').value.trim();
@@ -255,9 +259,11 @@ function highlightCard(id) {
 }
 
 function navigateTo(section) {
+  const secEl = document.getElementById(`section-${section}`);
+  if (!secEl) return; // sekce ve veřejné verzi neexistuje
   currentSection = section;
   document.querySelectorAll('.section').forEach((s) => s.classList.remove('active'));
-  document.getElementById(`section-${section}`).classList.add('active');
+  secEl.classList.add('active');
   document.querySelectorAll('.nav-item, .bnav-item').forEach((el) => {
     el.classList.toggle('active', el.dataset.section === section);
   });
@@ -332,7 +338,7 @@ function pageHeader({ num, label, h1, accentWord, desc, stats, addSection, addLa
   const kanji  = KANJI[num] || num;
   const h1Html = accentWord ? h1.replace(accentWord, `<em>${accentWord}</em>`) : h1;
 
-  const addBtnHtml = addSection ? `
+  const addBtnHtml = IS_PUBLIC ? '' : addSection ? `
     <button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}"
             data-add="${addSection}"${isOnline ? '' : ' disabled'}>
       <i class="ti ti-plus"></i><span class="btn-add-text"> ${addLabel || 'Přidat'}</span>
@@ -595,16 +601,16 @@ function renderTodosHtml(todos) {
     <div class="todo-item${t.done ? ' done' : ''}" data-id="${t.id}">
       <div class="todo-checkbox"><i class="ti ti-check todo-checkbox-icon"></i></div>
       <span class="todo-text">${esc(t.text)}</span>
-      <button class="todo-delete" data-todo-delete="${t.id}" title="Smazat"><i class="ti ti-x"></i></button>
+      ${IS_PUBLIC ? '' : `<button class="todo-delete" data-todo-delete="${t.id}" title="Smazat"><i class="ti ti-x"></i></button>`}
     </div>`).join('');
   return `
     ${todos.length
       ? `<div class="todo-list">${itemsHtml}</div>`
       : '<div class="dash-todo-empty">Žádné položky zatím nepřidány.</div>'}
-    <form class="todo-add-form" id="todo-add-form">
+    ${IS_PUBLIC ? '' : `<form class="todo-add-form" id="todo-add-form">
       <input class="todo-add-input" id="todo-add-input" type="text" placeholder="Přidat úkol…" maxlength="200" autocomplete="off">
       <button class="todo-add-btn" type="submit" title="Přidat">✓</button>
-    </form>`;
+    </form>`}`;
 }
 
 async function refreshTodos() {
@@ -616,6 +622,7 @@ async function refreshTodos() {
 }
 
 async function todoToggle(id, newDone) {
+  if (IS_PUBLIC) return;
   const item = document.querySelector(`.todo-item[data-id="${id}"]`);
   if (item) item.classList.toggle('done', newDone);
   const { error } = await db.from('todos').update({ done: newDone }).eq('id', id);
@@ -629,6 +636,7 @@ async function todoToggle(id, newDone) {
 }
 
 async function todoAdd(e) {
+  if (IS_PUBLIC) return;
   e.preventDefault();
   const input = document.getElementById('todo-add-input');
   const text = (input?.value || '').trim();
@@ -643,6 +651,7 @@ async function todoAdd(e) {
 }
 
 function todoStartEdit(textEl) {
+  if (IS_PUBLIC) return;
   if (textEl.querySelector('input')) return; // už editujeme
   const currentText = textEl.textContent.trim();
   const id = (textEl.closest('.todo-item') || textEl.closest('.priprava-item')).dataset.id;
@@ -668,6 +677,7 @@ async function todoSaveEdit(id, textEl, newText, oldText) {
 }
 
 async function todoDelete(id) {
+  if (IS_PUBLIC) return;
   const { error } = await db.from('todos').delete().eq('id', id);
   if (error) { showToast('Nepodařilo se smazat úkol.', 'error'); return; }
   await refreshTodos();
@@ -1519,6 +1529,7 @@ function setupModalListeners() {
 }
 
 function openAddModal(section) {
+  if (IS_PUBLIC) return;
   if (!isOnline) { showToast('Přidávání dostupné jen online.', 'error'); return; }
   editingId = null; editingSection = section;
   document.getElementById('modal-title').textContent = `Přidat — ${SECTION_TITLES[section]||section}`;
@@ -1529,6 +1540,7 @@ function openAddModal(section) {
 }
 
 function openEditModal(section, id) {
+  if (IS_PUBLIC) return;
   if (!isOnline) { showToast('Úpravy dostupné jen online.', 'error'); return; }
   editingId = id; editingSection = section;
   const item = getCache(sectionToTable(section)).find(r => r.id === id) || {};
@@ -2078,7 +2090,8 @@ async function loadDiary() {
     <div class="diary-timeline" id="diary-timeline"></div>
   </div>${tripFooter()}`;
 
-  document.getElementById('diary-upload-btn').addEventListener('click', () => {
+  const upBtn = document.getElementById('diary-upload-btn');
+  if (upBtn) upBtn.addEventListener('click', () => {
     // dotaz na polohu spustíme hned při kliknutí — prohlížeč pak stihne
     // zobrazit dotaz na oprávnění, než vybereš fotky
     diaryGeoPromise = null;
@@ -2293,7 +2306,7 @@ function diaryLbRender() {
   const when = dt && !isNaN(dt)
     ? `${dt.getDate()}.${dt.getMonth() + 1}.${dt.getFullYear()} · ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`
     : 'bez data';
-  const online = isOnline;
+  const online = isOnline && !IS_PUBLIC;
   ov.innerHTML = `
     <div class="diary-lb-top">
       <span class="diary-lb-count">${diaryLbIdx + 1} / ${diaryLbList.length}</span>
@@ -2715,6 +2728,7 @@ function cardRow(icon, content) {
   return `<div class="card-row"><i class="ti ${icon}"></i><span>${content}</span></div>`;
 }
 function actionBtns(section, id) {
+  if (IS_PUBLIC) return '';
   return `<button class="btn-icon edit"   onclick="openEditModal('${section}','${id}')" title="Upravit"><i class="ti ti-pencil"></i></button>
           <button class="btn-icon delete" onclick="confirmDelete('${section}','${id}')" title="Smazat"><i class="ti ti-trash"></i></button>`;
 }

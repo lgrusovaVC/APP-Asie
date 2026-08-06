@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Korea &amp; Japonsko ✈️ Cesta snů</title>
+  <meta name="description" content="Cesta po Koreji a Japonsku — pro rodinu a přátele">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#cf3a2a">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..500&family=DM+Sans:opsz,wght@9..40,300..700&family=DM+Mono:wght@300;400;500&family=Caveat:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.min.css">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* veřejná verze — skrytí editačních prvků vykreslovaných v kartách */
+    .flight-edit-btn, .activity-edit-btn, .hotel-edit-btn, .expense-edit-btn,
+    .todo-delete, .dash-footer-edit { display: none !important; }
+    .todo-item { cursor: default; }
+  </style>
+</head>
+<body>
+
+  <!-- Stub — veřejná verze nemá přihlášení -->
+  <div id="login-screen" style="display:none"></div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN APP (veřejná verze — jen pro čtení)
+  ═══════════════════════════════════════════════════════ -->
+  <div id="app" class="app" style="display:none">
+
+    <!-- Sidebar (desktop) -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-topline">
+          <span class="sidebar-num-label">Cesta snů</span>
+          <span class="sidebar-seal">朱</span>
+        </div>
+        <div class="sidebar-title" id="sidebar-trip-title">Korea &amp; Japonsko</div>
+        <div class="sidebar-dates" id="sidebar-trip-dates">září 2026</div>
+      </div>
+      <ul class="sidebar-nav" id="sidebar-nav">
+        <li><a class="nav-item active" data-section="dashboard">
+          <span class="nav-num">一</span><span class="nav-text">Přehled</span><span class="nav-bullet">●</span>
+        </a></li>
+        <li><a class="nav-item" data-section="flights">
+          <span class="nav-num">二</span><span class="nav-text">Cestování</span><span class="nav-bullet">●</span>
+        </a></li>
+        <li><a class="nav-item" data-section="activities">
+          <span class="nav-num">三</span><span class="nav-text">Místa</span><span class="nav-bullet">●</span>
+        </a></li>
+        <li><a class="nav-item" data-section="calendar">
+          <span class="nav-num">四</span><span class="nav-text">Kalendář</span><span class="nav-bullet">●</span>
+        </a></li>
+        <li><a class="nav-item" data-section="diary">
+          <span class="nav-num">五</span><span class="nav-text">Deník</span><span class="nav-bullet">●</span>
+        </a></li>
+      </ul>
+
+      <div class="sidebar-footer"></div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content" id="main-content">
+
+      <!-- Mobile Top Bar -->
+      <header class="topbar" id="topbar">
+        <span class="topbar-seal">朱</span>
+        <h2 class="topbar-title" id="topbar-title">Přehled</h2>
+      </header>
+
+      <!-- Sections — content rendered by JS -->
+      <section id="section-dashboard"  class="section active"><div id="dashboard-content"></div></section>
+      <section id="section-flights"    class="section"><div id="flights-content"></div></section>
+      <section id="section-activities" class="section"><div id="activities-content"></div></section>
+      <section id="section-calendar"   class="section"><div id="calendar-content"></div></section>
+      <section id="section-diary"      class="section"><div id="diary-content"></div></section>
+
+    </main>
+
+    <!-- Bottom Navigation (mobile) -->
+    <nav class="bottom-nav" id="bottom-nav">
+      <a class="bnav-item active" data-section="dashboard"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span>Přehled</span></a>
+      <a class="bnav-item" data-section="flights"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10h4a2 2 0 0 1 0 4h-4l-4 7H9l2-7H7L5 16H3l2-4-2-4h2l2 2h4L13 3h3z"/></svg><span>Cestování</span></a>
+      <a class="bnav-item" data-section="activities"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Místa</span></a>
+      <a class="bnav-item" data-section="calendar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Kalendář</span></a>
+      <a class="bnav-item" data-section="diary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span>Deník</span></a>
+    </nav>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ MODAL ══ -->
+  <div id="modal-overlay" class="modal-overlay" style="display:none" role="dialog" aria-modal="true">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Přidat záznam</h3>
+        <button class="btn-icon" id="modal-close-btn"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="modal-delete-btn" style="display:none"><i class="ti ti-trash"></i> Smazat</button>
+        <div class="modal-footer-right">
+          <button class="btn btn-ghost" id="modal-cancel-btn">Zrušit</button>
+          <button class="btn btn-primary" id="modal-save-btn"><i class="ti ti-check"></i> Uložit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ CONFIRM ══ -->
+  <div id="confirm-overlay" class="modal-overlay" style="display:none" role="alertdialog">
+    <div class="modal confirm-modal">
+      <div class="confirm-icon"><i class="ti ti-alert-triangle"></i></div>
+      <h3>Smazat záznam?</h3>
+      <p>Tuto akci nelze vrátit zpět.</p>
+      <div class="confirm-actions">
+        <button class="btn btn-ghost" id="confirm-cancel-btn">Zrušit</button>
+        <button class="btn btn-danger" id="confirm-ok-btn"><i class="ti ti-trash"></i> Smazat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ OFFLINE ══ -->
+  <div id="offline-banner" class="offline-banner" style="display:none">
+    <i class="ti ti-wifi-off"></i> Offline režim — zobrazena data z posledního připojení
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ TOAST ══ -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script>window.IS_PUBLIC = true;</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
