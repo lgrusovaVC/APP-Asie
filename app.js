@@ -2080,7 +2080,7 @@ async function loadDiary() {
     desc: 'Zážitky, dojmy a vzpomínky, které nemizí',
     stats,
     addHtml: `<button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}" id="diary-upload-btn"${isOnline ? '' : ' disabled'}>
-      <i class="ti ti-camera-plus"></i><span class="btn-add-text"> Přidat fotky</span>
+      <i class="ti ti-camera-plus"></i><span class="btn-add-text"> Přidat</span>
     </button>`,
   }) + `
   <div class="section-body">
@@ -2091,13 +2091,7 @@ async function loadDiary() {
   </div>${tripFooter()}`;
 
   const upBtn = document.getElementById('diary-upload-btn');
-  if (upBtn) upBtn.addEventListener('click', () => {
-    // dotaz na polohu spustíme hned při kliknutí — prohlížeč pak stihne
-    // zobrazit dotaz na oprávnění, než vybereš fotky
-    diaryGeoPromise = null;
-    diaryGetLocation();
-    document.getElementById('diary-file-input').click();
-  });
+  if (upBtn) upBtn.addEventListener('click', diaryAddMenu);
   document.getElementById('diary-file-input').addEventListener('change', diaryHandleFiles);
 
   if (document.getElementById('diary-map')) diaryInitMap();
@@ -2180,7 +2174,7 @@ function diaryRenderMarkers(list) {
 function diaryMakeMarker(p) {
   const icon = L.divIcon({
     className: 'diary-pin',
-    html: `<img src="${p.url}" alt="">`,
+    html: `<img src="${p.url}" alt="">${p.kind === 'video' ? '<span class="diary-play diary-pin-play"><i class="ti ti-player-play"></i></span>' : ''}`,
     iconSize: [46, 46], iconAnchor: [23, 23],
   });
   const m = L.marker([p.lat, p.lng], { icon });
@@ -2232,6 +2226,7 @@ function diaryRenderCards(data) {
     el.innerHTML = '<div class="diary-gallery">' + diarySorted(data).map(p =>
       `<div class="diary-gallery-item" onclick="diaryOpenLb('${p.id}')" title="${esc(p.caption || '')}">
         <img src="${p.url}" loading="lazy" alt="">
+        ${p.kind === 'video' ? '<span class="diary-play"><i class="ti ti-player-play"></i></span>' : ''}
       </div>`).join('') + '</div>';
   } else if (diaryView === 'days') {
     const groups = {};
@@ -2271,6 +2266,7 @@ function diaryRenderTimeline(data) {
     const noPos = p.lat == null || p.lng == null;
     return `${dayLabel}<div class="diary-tl-item${noPos ? ' nopos' : ''}" onclick="diaryOpenLb('${p.id}')" title="${esc(p.caption || '')}">
       <img src="${p.url}" loading="lazy" alt="">
+      ${p.kind === 'video' ? '<span class="diary-play"><i class="ti ti-player-play"></i></span>' : ''}
       ${noPos ? '<span class="diary-tl-nopin" title="Bez polohy"><i class="ti ti-map-pin-off"></i></span>' : ''}
     </div>`;
   }).join('');
@@ -2314,7 +2310,10 @@ function diaryLbRender() {
     </div>
     <div class="diary-lb-imgwrap" id="diary-lb-imgwrap">
       <button class="diary-lb-nav prev${diaryLbIdx === 0 ? ' off' : ''}" onclick="diaryLbNav(-1)"><i class="ti ti-chevron-left"></i></button>
-      <img src="${p.url}" alt="">
+      ${p.kind === 'video' && diaryYtId(p.video_url)
+        ? `<div class="diary-lb-video"><iframe src="https://www.youtube.com/embed/${diaryYtId(p.video_url)}" title="Video"
+             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
+        : `<img src="${p.url}" alt="">`}
       <button class="diary-lb-nav next${diaryLbIdx === diaryLbList.length - 1 ? ' off' : ''}" onclick="diaryLbNav(1)"><i class="ti ti-chevron-right"></i></button>
     </div>
     <div class="diary-lb-meta">
@@ -2421,6 +2420,138 @@ function diaryLbPlacePhoto(id) {
 function diaryLbDelete(id) {
   diaryLbClose();
   diaryConfirmDelete(id);
+}
+
+/* ── Menu Přidat: fotky / video ── */
+function diaryAddMenu() {
+  let ov = document.getElementById('diary-add-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'diary-add-overlay';
+    ov.className = 'modal-overlay';
+    ov.style.display = 'flex';
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = `
+    <div class="modal diary-add-modal">
+      <div class="modal-header">
+        <h3>Co chceš přidat?</h3>
+        <button class="btn-icon" onclick="document.getElementById('diary-add-overlay').remove()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <button class="btn btn-primary diary-add-choice" onclick="diaryAddPhotos()">
+          <i class="ti ti-photo"></i> Fotky z galerie
+        </button>
+        <button class="btn btn-ghost diary-add-choice" onclick="diaryAddVideo()">
+          <i class="ti ti-brand-youtube"></i> Video z YouTube
+        </button>
+      </div>
+    </div>`;
+}
+
+function diaryAddPhotos() {
+  document.getElementById('diary-add-overlay')?.remove();
+  // dotaz na polohu hned — prohlížeč stihne zobrazit oprávnění, než vybereš fotky
+  diaryGeoPromise = null;
+  diaryGetLocation();
+  document.getElementById('diary-file-input').click();
+}
+
+function diaryAddVideo() {
+  document.getElementById('diary-add-overlay')?.remove();
+  diaryVideoDialog();
+}
+
+/* ── Video z YouTube ── */
+function diaryYtId(url) {
+  const m = String(url || '').match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+// svislý náhled (Shorts) s fallbackem na standardní
+function diaryYtThumb(id) {
+  return new Promise((resolve) => {
+    const oar = `https://i.ytimg.com/vi/${id}/oardefault.jpg`;
+    const fallback = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+    const img = new Image();
+    img.onload  = () => resolve(img.naturalWidth > 120 ? oar : fallback);
+    img.onerror = () => resolve(fallback);
+    img.src = oar;
+  });
+}
+
+function diaryVideoDialog() {
+  let ov = document.getElementById('diary-video-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'diary-video-overlay';
+    ov.className = 'modal-overlay';
+    ov.style.display = 'flex';
+    document.body.appendChild(ov);
+  }
+  const now = new Date();
+  const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  ov.innerHTML = `
+    <div class="modal diary-place-modal">
+      <div class="modal-header">
+        <h3>Video z YouTube</h3>
+        <button class="btn-icon" onclick="document.getElementById('diary-video-overlay').remove()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Odkaz na video <span class="form-required">*</span></label>
+          <input type="url" id="diary-video-url" placeholder="https://youtu.be/…" autocomplete="off">
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Datum natočení</label><input type="date" id="diary-video-date" value="${todayISO()}"></div>
+          <div class="form-group"><label>Čas</label><input type="time" id="diary-video-time" value="${hhmm}"></div>
+        </div>
+        <div class="form-group">
+          <label>Popisek</label>
+          <input type="text" id="diary-video-caption" placeholder="např. Večerní Dotonbori" maxlength="200">
+        </div>
+        <div class="diary-place-actions">
+          <button class="btn btn-primary" id="diary-video-save-btn" onclick="diaryVideoSave()"><i class="ti ti-check"></i> Uložit</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('diary-video-overlay').remove()">Zrušit</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function diaryVideoSave() {
+  const link = document.getElementById('diary-video-url')?.value.trim();
+  const ytId = diaryYtId(link);
+  if (!ytId) { showToast('Tohle nevypadá jako odkaz na YouTube video.', 'error'); return; }
+  const btn = document.getElementById('diary-video-save-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .8s linear infinite"></i> Ukládám…'; }
+
+  const thumb = await diaryYtThumb(ytId);
+  const date = document.getElementById('diary-video-date')?.value;
+  const time = document.getElementById('diary-video-time')?.value || '12:00';
+  const takenAt = date ? new Date(`${date}T${time}:00`) : null;
+  const caption = document.getElementById('diary-video-caption')?.value.trim() || null;
+
+  const { data: row, error } = await db.from('photos').insert({
+    kind: 'video',
+    video_url: link,
+    storage_path: '',
+    url: thumb,
+    lat: null, lng: null, place: null,
+    taken_at: (takenAt && !isNaN(takenAt)) ? takenAt.toISOString() : null,
+    caption,
+  }).select().single();
+
+  if (error) {
+    console.error(error);
+    showToast('Video se nepodařilo uložit.', 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i> Uložit'; }
+    return;
+  }
+  document.getElementById('diary-video-overlay')?.remove();
+  showToast('Video přidáno.', 'success');
+  loadDiary();
+  diaryPlaceDialog([row]);
 }
 
 /* ── Nahrávání ── */

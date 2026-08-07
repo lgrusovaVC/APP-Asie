@@ -1983,7 +1983,32 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   aspect-ratio: 3 / 4; cursor: pointer;
   border: 1px solid var(--rule); background: var(--alt); overflow: hidden;
 }
+.diary-gallery-item { position: relative; }
 .diary-gallery-item img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ikona přehrávání u videí */
+.diary-play {
+  position: absolute; inset: 0; margin: auto;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(24,20,17,.65); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; pointer-events: none;
+}
+.diary-pin { position: relative; }
+.diary-pin-play { width: 22px; height: 22px; font-size: 11px; }
+
+/* přehrávač v modalu */
+.diary-lb-video {
+  width: 100%; max-width: 640px; aspect-ratio: 16 / 9;
+  max-height: 100%;
+}
+.diary-lb-video iframe { width: 100%; height: 100%; border: 0; }
+
+/* menu Přidat + dialog videa */
+.diary-add-modal { max-width: 340px; }
+.diary-add-choice {
+  width: 100%; justify-content: center; margin-bottom: 8px;
+}
 
 /* piny s miniaturou */
 .diary-pin img {

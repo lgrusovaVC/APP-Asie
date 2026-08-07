@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS photos (
   taken_at     TIMESTAMPTZ,               -- datum a čas pořízení (z EXIF)
   place        TEXT,                      -- název místa/města (reverzní geokódování)
   caption      TEXT,
+  kind         TEXT DEFAULT 'photo',      -- 'photo' | 'video'
+  video_url    TEXT,                      -- odkaz na YouTube (jen u videí)
   created_at   TIMESTAMPTZ DEFAULT NOW(),
   updated_at   TIMESTAMPTZ DEFAULT NOW()
 );
