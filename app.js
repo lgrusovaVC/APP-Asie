@@ -2031,6 +2031,7 @@ async function diarySearchPlace(q) {
 
 let diaryMap = null;
 let diaryCluster = null;
+let diaryRoute = null;
 let diaryMarkers = {};
 let diaryGeoPromise = null;
 let diaryView = 'days';       // 'days' | 'places'
@@ -2175,6 +2176,15 @@ function diaryRenderMarkers(list) {
   const withPos = list.filter(p => p.lat != null && p.lng != null);
   withPos.forEach(p => diaryCluster.addLayer(diaryMakeMarker(p)));
   diaryMap.addLayer(diaryCluster);
+
+  // chronologická trasa mezi piny
+  if (diaryRoute) { try { diaryMap.removeLayer(diaryRoute); } catch {} diaryRoute = null; }
+  const pts = diarySorted(withPos).map(p => [p.lat, p.lng]);
+  if (pts.length > 1) {
+    diaryRoute = L.polyline(pts, {
+      color: '#cf3a2a', weight: 2, opacity: .55, dashArray: '6 6', interactive: false,
+    }).addTo(diaryMap);
+  }
   if (withPos.length) {
     const bounds = L.latLngBounds(withPos.map(p => [p.lat, p.lng]));
     diaryMap.fitBounds(bounds.pad(0.2), { maxZoom: (diaryPlaceFilter || diaryDayFilter) ? 13 : 12 });
