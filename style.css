@@ -2003,6 +2003,10 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   max-height: 100%;
 }
 .diary-lb-video iframe { width: 100%; height: 100%; border: 0; }
+.diary-lb-video.vertical {
+  aspect-ratio: 9 / 16; height: 100%; width: auto;
+  max-width: 100%;
+}
 
 /* dvojice tlačítek Přidat fotky / Video v hlavičce */
 .stats-strip-add { display: flex; gap: 8px; align-items: center; }

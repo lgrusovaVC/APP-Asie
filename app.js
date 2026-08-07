@@ -2079,11 +2079,11 @@ async function loadDiary() {
     h1: 'Naše cesta v obrazech', accentWord: 'v obrazech',
     desc: 'Zážitky, dojmy a vzpomínky, které nemizí',
     stats,
-    addHtml: `<button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}" id="diary-upload-btn"${isOnline ? '' : ' disabled'}>
-      <i class="ti ti-camera-plus"></i><span class="btn-add-text"> Přidat fotky</span>
+    addHtml: `<button class="btn btn-ghost btn-add${isOnline ? '' : ' disabled'}" id="diary-video-btn"${isOnline ? '' : ' disabled'}>
+      <i class="ti ti-video-plus"></i><span class="btn-add-text"> Přidat video</span>
     </button>
-    <button class="btn btn-ghost btn-add${isOnline ? '' : ' disabled'}" id="diary-video-btn"${isOnline ? '' : ' disabled'}>
-      <i class="ti ti-brand-youtube"></i><span class="btn-add-text"> Video</span>
+    <button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}" id="diary-upload-btn"${isOnline ? '' : ' disabled'}>
+      <i class="ti ti-camera-plus"></i><span class="btn-add-text"> Přidat fotky</span>
     </button>`,
   }) + `
   <div class="section-body">
@@ -2327,7 +2327,7 @@ function diaryLbRender() {
     <div class="diary-lb-imgwrap" id="diary-lb-imgwrap">
       <button class="diary-lb-nav prev${diaryLbIdx === 0 ? ' off' : ''}" onclick="diaryLbNav(-1)"><i class="ti ti-chevron-left"></i></button>
       ${p.kind === 'video' && diaryYtId(p.video_url)
-        ? `<div class="diary-lb-video"><iframe src="https://www.youtube.com/embed/${diaryYtId(p.video_url)}" title="Video"
+        ? `<div class="diary-lb-video${/\/shorts\//.test(p.video_url) ? ' vertical' : ''}"><iframe src="https://www.youtube.com/embed/${diaryYtId(p.video_url)}" title="Video"
              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`
         : `<img src="${p.url}" alt="">`}
       <button class="diary-lb-nav next${diaryLbIdx === diaryLbList.length - 1 ? ' off' : ''}" onclick="diaryLbNav(1)"><i class="ti ti-chevron-right"></i></button>
