@@ -2004,15 +2004,12 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 }
 .diary-lb-video iframe { width: 100%; height: 100%; border: 0; }
 
-/* menu Přidat + dialog videa */
-.diary-add-modal { max-width: 340px; }
-.diary-add-choice {
-  width: 100%; justify-content: center; margin-bottom: 8px;
-}
+/* dvojice tlačítek Přidat fotky / Video v hlavičce */
+.stats-strip-add { display: flex; gap: 8px; align-items: center; }
 
-/* piny s miniaturou */
+/* piny s miniaturou — !important přebíjí leafletí width:auto pro obrázky v mapě */
 .diary-pin img {
-  width: 46px; height: 46px; object-fit: cover;
+  width: 46px !important; height: 46px !important; object-fit: cover;
   border: 2px solid var(--panel);
   outline: 1px solid var(--ink);
   box-shadow: 0 2px 6px rgba(28,24,21,.35);
@@ -2213,7 +2210,12 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 }
 .diary-day-card.active { outline: 2px solid var(--acc); }
 .diary-day-date  { font-family: var(--serif); font-size: 1.05rem; color: var(--ink); }
-.diary-day-count { font-family: var(--mono); font-size: 11px; color: var(--acc); }
+.diary-day-count {
+  font-family: var(--mono); font-size: 11px; color: var(--acc);
+  display: flex; align-items: center; gap: 6px;
+}
+.diary-day-count i { font-size: 12px; }
+.diary-day-sep { width: 1px; height: 11px; background: var(--rule); }
 .diary-day-places { font-size: 11.5px; color: var(--ink3); }
 
 /* fotogalerie — celoobrazovkový modal */

@@ -2080,7 +2080,10 @@ async function loadDiary() {
     desc: 'Zážitky, dojmy a vzpomínky, které nemizí',
     stats,
     addHtml: `<button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}" id="diary-upload-btn"${isOnline ? '' : ' disabled'}>
-      <i class="ti ti-camera-plus"></i><span class="btn-add-text"> Přidat</span>
+      <i class="ti ti-camera-plus"></i><span class="btn-add-text"> Přidat fotky</span>
+    </button>
+    <button class="btn btn-ghost btn-add${isOnline ? '' : ' disabled'}" id="diary-video-btn"${isOnline ? '' : ' disabled'}>
+      <i class="ti ti-brand-youtube"></i><span class="btn-add-text"> Video</span>
     </button>`,
   }) + `
   <div class="section-body">
@@ -2091,7 +2094,14 @@ async function loadDiary() {
   </div>${tripFooter()}`;
 
   const upBtn = document.getElementById('diary-upload-btn');
-  if (upBtn) upBtn.addEventListener('click', diaryAddMenu);
+  if (upBtn) upBtn.addEventListener('click', () => {
+    // dotaz na polohu hned — prohlížeč stihne zobrazit oprávnění, než vybereš fotky
+    diaryGeoPromise = null;
+    diaryGetLocation();
+    document.getElementById('diary-file-input').click();
+  });
+  const vidBtn = document.getElementById('diary-video-btn');
+  if (vidBtn) vidBtn.addEventListener('click', diaryVideoDialog);
   document.getElementById('diary-file-input').addEventListener('change', diaryHandleFiles);
 
   if (document.getElementById('diary-map')) diaryInitMap();
@@ -2239,10 +2249,16 @@ function diaryRenderCards(data) {
       const ph = groups[iso];
       const places = [...new Set(ph.map(diaryPlaceOf).filter(Boolean))];
       const placeStr = places.length ? esc(places.slice(0, 2).join(', ')) + (places.length > 2 ? '…' : '') : '—';
+      const nVid = ph.filter(x => x.kind === 'video').length;
+      const nFot = ph.length - nVid;
+      const counts =
+        (nFot ? `<span>${nFot} <i class="ti ti-camera"></i></span>` : '') +
+        (nFot && nVid ? '<span class="diary-day-sep"></span>' : '') +
+        (nVid ? `<span>${nVid} <i class="ti ti-video"></i></span>` : '');
       return `<div class="diary-day-card${diaryDayFilter === iso ? ' active' : ''}"
                    data-iso="${iso}" onclick="diaryToggleDay(this.dataset.iso)">
         <span class="diary-day-date">${shortDateNoYear(iso)}</span>
-        <span class="diary-day-count">${diaryCountLabel(ph.length, 'fotka', 'fotky', 'fotek')}</span>
+        <span class="diary-day-count">${counts}</span>
         <span class="diary-day-places">${placeStr}</span>
       </div>`;
     }).join('') + '</div>';
@@ -2420,47 +2436,6 @@ function diaryLbPlacePhoto(id) {
 function diaryLbDelete(id) {
   diaryLbClose();
   diaryConfirmDelete(id);
-}
-
-/* ── Menu Přidat: fotky / video ── */
-function diaryAddMenu() {
-  let ov = document.getElementById('diary-add-overlay');
-  if (!ov) {
-    ov = document.createElement('div');
-    ov.id = 'diary-add-overlay';
-    ov.className = 'modal-overlay';
-    ov.style.display = 'flex';
-    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
-    document.body.appendChild(ov);
-  }
-  ov.innerHTML = `
-    <div class="modal diary-add-modal">
-      <div class="modal-header">
-        <h3>Co chceš přidat?</h3>
-        <button class="btn-icon" onclick="document.getElementById('diary-add-overlay').remove()"><i class="ti ti-x"></i></button>
-      </div>
-      <div class="modal-body">
-        <button class="btn btn-primary diary-add-choice" onclick="diaryAddPhotos()">
-          <i class="ti ti-photo"></i> Fotky z galerie
-        </button>
-        <button class="btn btn-ghost diary-add-choice" onclick="diaryAddVideo()">
-          <i class="ti ti-brand-youtube"></i> Video z YouTube
-        </button>
-      </div>
-    </div>`;
-}
-
-function diaryAddPhotos() {
-  document.getElementById('diary-add-overlay')?.remove();
-  // dotaz na polohu hned — prohlížeč stihne zobrazit oprávnění, než vybereš fotky
-  diaryGeoPromise = null;
-  diaryGetLocation();
-  document.getElementById('diary-file-input').click();
-}
-
-function diaryAddVideo() {
-  document.getElementById('diary-add-overlay')?.remove();
-  diaryVideoDialog();
 }
 
 /* ── Video z YouTube ── */
