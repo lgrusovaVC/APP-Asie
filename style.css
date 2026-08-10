@@ -1575,7 +1575,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   text-transform: uppercase;
 }
 .cal-day {
-  min-height: 86px; padding: 10px 6px 8px;
+  min-height: 86px; padding: 15px 6px 13px;
   border: 1px solid transparent;
   display: flex; flex-direction: column; align-items: center; gap: 9px;
   cursor: pointer; transition: background var(--transition), border-color var(--transition);
@@ -1598,7 +1598,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .cal-dot-transport     { background: #6B3FA0; }
 
 @media (max-width: 768px) {
-  .cal-day { min-height: 66px; padding: 7px 3px 6px; gap: 6px; }
+  .cal-day { min-height: 66px; padding: 12px 3px 11px; gap: 6px; }
   .cal-day-num { font-size: 11px; }
   .cal-dot { width: 4px; height: 4px; }
 }
