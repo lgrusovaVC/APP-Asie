@@ -2884,18 +2884,40 @@ async function wxRenderStrips() {
 }
 
 async function wxOpenDetail() {
-  const stop = wxStopFor(todayISO());
-  const data = await wxFetch(stop, 10);
-  const d = data?.daily;
-  if (!d || !d.time) { showToast('Počasí se nepodařilo načíst.', 'error'); return; }
-  const rows = d.time.map((iso, i) => `
-    <div class="wx-row">
-      <span class="wx-row-day">${wxDayLabel(iso, i)}</span>
-      <i class="ti ${wxIcon(d.weather_code[i])}"></i>
-      <span class="wx-row-temp">${Math.round(d.temperature_2m_max[i])}° <em>/ ${Math.round(d.temperature_2m_min[i])}°</em></span>
-      <span class="wx-row-extra"><i class="ti ti-droplet"></i> ${d.precipitation_probability_max?.[i] ?? '–'}&thinsp;%</span>
-      <span class="wx-row-extra"><i class="ti ti-wind"></i> ${Math.round(d.wind_gusts_10m_max?.[i] ?? 0)}</span>
-    </div>`).join('');
+  // 10 dní, každý s místem podle itineráře
+  const days = Array.from({ length: 10 }, (_, off) => {
+    const dt = new Date(); dt.setHours(12, 0, 0, 0); dt.setDate(dt.getDate() + off);
+    const iso = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    return { iso, off, stop: wxStopFor(iso) };
+  });
+  const cities = [...new Set(days.map(x => x.stop.city))];
+  const byCity = {};
+  await Promise.all(cities.map(async city => {
+    byCity[city] = await wxFetch(days.find(x => x.stop.city === city).stop, 16);
+  }));
+  if (!cities.some(c => byCity[c]?.daily?.time)) { showToast('Počasí se nepodařilo načíst.', 'error'); return; }
+
+  let lastCity = null;
+  const rows = days.map(({ iso, off, stop }) => {
+    const d = byCity[stop.city]?.daily;
+    const i = d?.time ? d.time.indexOf(iso) : -1;
+    const newCity = stop.city !== lastCity;
+    lastCity = stop.city;
+    const place = `<span class="wx-row-place${newCity ? '' : ' dim'}">${esc(stop.city)}</span>`;
+    const vals = i < 0
+      ? '<span class="wx-row-none">předpověď zatím není</span>'
+      : `<i class="ti ${wxIcon(d.weather_code[i])}"></i>
+         <span class="wx-row-temp">${Math.round(d.temperature_2m_max[i])}° <em>/ ${Math.round(d.temperature_2m_min[i])}°</em></span>
+         <span class="wx-row-extra"><i class="ti ti-droplet"></i> ${d.precipitation_probability_max?.[i] ?? '–'}&thinsp;%</span>
+         <span class="wx-row-extra"><i class="ti ti-wind"></i> ${Math.round(d.wind_gusts_10m_max?.[i] ?? 0)} km/h</span>`;
+    return `<div class="wx-row${newCity ? ' newplace' : ''}">
+      <span class="wx-row-head">
+        <span class="wx-row-day">${wxDayLabel(iso, off)}</span>
+        ${place}
+      </span>
+      <span class="wx-row-vals">${vals}</span>
+    </div>`;
+  }).join('');
   let ov = document.getElementById('wx-detail-overlay');
   if (!ov) {
     ov = document.createElement('div');
@@ -2906,9 +2928,9 @@ async function wxOpenDetail() {
     document.body.appendChild(ov);
   }
   ov.innerHTML = `
-    <div class="modal diary-place-modal">
+    <div class="modal wx-detail-modal">
       <div class="modal-header">
-        <h3>Počasí — ${esc(stop.city)}</h3>
+        <h3>Předpověď počasí</h3>
         <button class="btn-icon" onclick="document.getElementById('wx-detail-overlay').remove()"><i class="ti ti-x"></i></button>
       </div>
       <div class="modal-body">
