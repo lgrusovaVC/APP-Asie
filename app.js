@@ -2844,21 +2844,41 @@ function wxDayLabel(iso, i) {
 async function wxRenderStrips() {
   const slots = document.querySelectorAll('.wx-slot');
   if (!slots.length) return;
-  const stop = wxStopFor(todayISO());
-  const data = await wxFetch(stop, 10);
-  const d = data?.daily;
-  if (!d || !d.time) {
-    slots.forEach(s => { s.innerHTML = '<span class="wx-note">Počasí se nepodařilo načíst.</span>'; });
-    return;
-  }
-  const daysHtml = d.time.slice(0, 3).map((iso, i) => `
-    <span class="wx-day">
-      <span class="wx-day-label">${i === 0 ? 'Dnes' : i === 1 ? 'Zítra' : wxDayLabel(iso, i)}</span>
-      <i class="ti ${wxIcon(d.weather_code[i])}"></i>
-      <span class="wx-temp">${Math.round(d.temperature_2m_max[i])}°<em>/${Math.round(d.temperature_2m_min[i])}°</em></span>
-    </span>`).join('');
+
+  // tři dny, každý s vlastním místem podle itineráře
+  const days = [0, 1, 2].map(off => {
+    const dt = new Date(); dt.setHours(12, 0, 0, 0); dt.setDate(dt.getDate() + off);
+    const iso = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    return { iso, off, stop: wxStopFor(iso) };
+  });
+
+  // pro každé unikátní místo jeden dotaz
+  const cities = [...new Set(days.map(x => x.stop.city))];
+  const byCity = {};
+  await Promise.all(cities.map(async city => {
+    byCity[city] = await wxFetch(days.find(x => x.stop.city === city).stop, 10);
+  }));
+
+  const cols = days.map(({ iso, off, stop }) => {
+    const d = byCity[stop.city]?.daily;
+    const i = d?.time ? d.time.indexOf(iso) : -1;
+    const label = off === 0 ? 'Dnes' : off === 1 ? 'Zítra' : wxDayLabel(iso, off);
+    const body = i >= 0
+      ? `<i class="ti ${wxIcon(d.weather_code[i])}"></i>
+         <span class="wx-temp">${Math.round(d.temperature_2m_max[i])}°<em>/${Math.round(d.temperature_2m_min[i])}°</em></span>`
+      : '<span class="wx-note">—</span>';
+    return `<div class="wx-col">
+      <span class="wx-day-label">${label}</span>
+      <span class="wx-col-place"><i class="ti ti-map-pin"></i> ${esc(stop.city)}</span>
+      <span class="wx-col-body">${body}</span>
+    </div>`;
+  }).join('');
+
+  const anyData = cities.some(c => byCity[c]?.daily?.time);
   slots.forEach(s => {
-    s.innerHTML = `<span class="wx-place"><i class="ti ti-map-pin"></i> ${esc(stop.city)}</span>${daysHtml}<i class="ti ti-chevron-right wx-more"></i>`;
+    s.innerHTML = anyData
+      ? `<div class="wx-cols">${cols}</div><i class="ti ti-chevron-right wx-more"></i>`
+      : '<span class="wx-note">Počasí se nepodařilo načíst.</span>';
   });
 }
 
@@ -2946,26 +2966,36 @@ async function wxCheckAlerts() {
     const r = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson');
     const j = await r.json();
     (j.features || []).forEach(f => {
-      const [lng, lat] = f.geometry.coordinates;
-      const m = f.properties.mag || 0;
+      const c = f.geometry?.coordinates;
+      if (!Array.isArray(c)) return;
+      const [lng, lat] = c;
+      const m = parseFloat(f.properties.mag) || 0;
       if (m >= 5 && wxDistKm(stop.lat, stop.lng, lat, lng) <= 200) {
         alerts.push(`Zemětřesení M${m.toFixed(1)} · ${esc(f.properties.place || '')}${f.properties.tsunami ? ' · sleduj výstrahy tsunami!' : ''}`);
       }
     });
   } catch {}
 
-  // 2) tajfun — GDACS Orange/Red pro Japonsko či Koreu (při nedostupnosti se tiše přeskočí)
-  try {
-    const r = await fetch('https://www.gdacs.org/gdacsapi/api/events/geteventlist/MAP?eventtypes=TC');
-    const j = await r.json();
-    (j.features || []).forEach(f => {
-      const p = f.properties || {};
-      const where = JSON.stringify(p.country || p.affectedcountries || '');
-      if ((p.alertlevel === 'Orange' || p.alertlevel === 'Red') && /japan|korea/i.test(where)) {
-        alerts.push(`Tajfun (stupeň ${p.alertlevel}) · ${esc(p.name || p.eventname || 'v regionu')}`);
-      }
-    });
-  } catch {}
+  // 2) tajfun — GDACS Orange/Red v okolí aktuální zastávky (do 800 km)
+  // Pozor: GDACS vrací pro jeden cyklon mnoho bodů trasy → nutná deduplikace podle názvu
+  if (stop.city !== 'Praha') {
+    try {
+      const r = await fetch('https://www.gdacs.org/gdacsapi/api/events/geteventlist/MAP?eventtypes=TC');
+      const j = await r.json();
+      const seen = new Set();
+      (j.features || []).forEach(f => {
+        const p = f.properties || {};
+        if (p.alertlevel !== 'Orange' && p.alertlevel !== 'Red') return;
+        const c = f.geometry?.coordinates;
+        if (!Array.isArray(c) || typeof c[0] !== 'number') return;
+        if (wxDistKm(stop.lat, stop.lng, c[1], c[0]) > 800) return;
+        const name = p.name || p.eventname || 'tropický cyklon';
+        if (seen.has(name)) return;
+        seen.add(name);
+        alerts.push(`Tajfun (stupeň ${p.alertlevel}) v okolí · ${esc(name)}`);
+      });
+    } catch {}
+  }
 
   // 3) extrém v předpovědi na dnešek/zítřek
   const data = await wxFetch(stop, 3);
@@ -2980,7 +3010,7 @@ async function wxCheckAlerts() {
     }
   }
 
-  if (alerts.length) wxShowAlertBanner(alerts);
+  if (alerts.length) wxShowAlertBanner([...new Set(alerts)].slice(0, 5));
 }
 
 function wxShowAlertBanner(alerts) {
