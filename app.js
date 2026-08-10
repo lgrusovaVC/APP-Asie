@@ -508,9 +508,6 @@ async function loadDashboard() {
           <div class="dash-map-label-sub">~ 1 700 km · 9 měst</div>
         </div>
         ${tripMapSVG()}
-        <div class="wx-strip wx-slot wx-mobile" onclick="wxOpenDetail()" role="button" tabindex="0">
-          <span class="wx-note">Načítám počasí…</span>
-        </div>
       </div>
       <div class="dash-photos-col">
         <div class="dash-photos-header">
@@ -522,6 +519,10 @@ async function loadDashboard() {
           <button class="carousel-btn carousel-next" id="photo-next-btn" onclick="photoNav(1)">&#8250;</button>
         </div>
       </div>
+    </div>
+
+    <div class="wx-strip wx-slot wx-mobile" onclick="wxOpenDetail()" role="button" tabindex="0">
+      <span class="wx-note">Načítám počasí…</span>
     </div>
 
     <div class="dash-body">
