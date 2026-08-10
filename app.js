@@ -1792,9 +1792,9 @@ function renderCalendarMonth() {
           </div>
           <i class="ti ti-chevron-right cal-event-arrow"></i>
         </div>`).join('');
-      detail = `<div class="cal-detail"><div class="cal-detail-date">${dayLabel}</div><div class="cal-detail-events">${items}</div></div>`;
+      detail = `<div class="cal-detail"><div class="cal-detail-date">${dayLabel}</div><div id="cal-detail-wx"></div><div class="cal-detail-events">${items}</div></div>`;
     } else {
-      detail = `<div class="cal-detail"><div class="cal-detail-date">${dayLabel}</div><div class="cal-detail-empty">Žádné naplánované události</div></div>`;
+      detail = `<div class="cal-detail"><div class="cal-detail-date">${dayLabel}</div><div id="cal-detail-wx"></div><div class="cal-detail-empty">Žádné naplánované události</div></div>`;
     }
   }
 
@@ -1804,6 +1804,7 @@ function renderCalendarMonth() {
     <div class="cal-grid">${cells}</div>
     ${detail}`;
   wxDecorateCalendar();
+  if (calSelectedDay) wxRenderCalDetail(calSelectedDay);
 }
 
 function calSelectDay(dateStr) {
@@ -2823,6 +2824,22 @@ function wxStopFor(iso) {
   return WX_STOPS.find(s => iso >= s.from && iso < s.to) || WX_PRAHA;
 }
 
+// WMO weather code → slovní popis
+function wxText(code) {
+  const map = {
+    0: 'jasno', 1: 'skoro jasno', 2: 'polojasno', 3: 'zataženo',
+    45: 'mlha', 48: 'namrzající mlha',
+    51: 'mrholení', 53: 'mrholení', 55: 'silné mrholení',
+    61: 'slabý déšť', 63: 'déšť', 65: 'vydatný déšť',
+    66: 'mrznoucí déšť', 67: 'mrznoucí déšť',
+    71: 'slabé sněžení', 73: 'sněžení', 75: 'silné sněžení', 77: 'sněhová zrna',
+    80: 'přeháňky', 81: 'přeháňky', 82: 'silné přeháňky',
+    85: 'sněhové přeháňky', 86: 'sněhové přeháňky',
+    95: 'bouřky', 96: 'bouřky s kroupami', 99: 'bouřky s kroupami',
+  };
+  return map[code] || 'proměnlivo';
+}
+
 // WMO weather code → ikona
 function wxIcon(code) {
   if (code === 0 || code === 1) return 'ti-sun';
@@ -2982,9 +2999,46 @@ async function wxDecorateCalendar() {
         if (off >= 0 && off < d.time.length) i = off;
       }
       if (i < 0 || cell.querySelector('.cal-wx')) return;
-      cell.insertAdjacentHTML('beforeend', `<span class="cal-wx"><i class="ti ${wxIcon(d.weather_code[i])}"></i></span>`);
+      cell.insertAdjacentHTML('beforeend', `<span class="cal-wx">
+        <i class="ti ${wxIcon(d.weather_code[i])}"></i>
+        <span class="cal-wx-temp">${Math.round(d.temperature_2m_max[i])}°<em>/${Math.round(d.temperature_2m_min[i])}°</em></span>
+      </span>`);
     });
   }
+}
+
+/* ── Podrobné počasí v detailu dne (kalendář) ── */
+async function wxRenderCalDetail(iso) {
+  const box = document.getElementById('cal-detail-wx');
+  if (!box) return;
+  const stop = wxStopFor(iso);
+  const data = await wxFetch(stop, 16);
+  const d = data?.daily;
+  let i = d?.time ? d.time.indexOf(iso) : -1;
+  if (i < 0 && TEST_TODAY && d?.time) {
+    const off = Math.round((new Date(iso + 'T12:00:00') - wxNow().setHours(12, 0, 0, 0)) / 86400000);
+    if (off >= 0 && off < d.time.length) i = off;
+  }
+  if (i < 0) {
+    box.innerHTML = `<div class="cal-wx-detail empty"><i class="ti ti-calendar-question"></i>
+      Předpověď pro ${esc(stop.city)} zatím není k dispozici (vychází ~16 dní dopředu).</div>`;
+    return;
+  }
+  const rain = d.precipitation_sum?.[i];
+  box.innerHTML = `
+    <div class="cal-wx-detail">
+      <div class="cal-wx-main">
+        <i class="ti ${wxIcon(d.weather_code[i])}"></i>
+        <div>
+          <div class="cal-wx-temps">${Math.round(d.temperature_2m_max[i])}° <em>/ ${Math.round(d.temperature_2m_min[i])}°</em></div>
+          <div class="cal-wx-desc">${wxText(d.weather_code[i])} · ${esc(stop.city)}</div>
+        </div>
+      </div>
+      <div class="cal-wx-facts">
+        <span><i class="ti ti-droplet"></i> srážky ${d.precipitation_probability_max?.[i] ?? '–'}&thinsp;%${rain ? ` (${rain.toFixed(1)} mm)` : ''}</span>
+        <span><i class="ti ti-wind"></i> nárazy ${Math.round(d.wind_gusts_10m_max?.[i] ?? 0)} km/h</span>
+      </div>
+    </div>`;
 }
 
 /* ── Výstrahy při otevření (jen privátní verze) ── */
