@@ -4,6 +4,12 @@
 
 /* ════ STATE ════════════════════════════════════════════════ */
 const IS_PUBLIC = window.IS_PUBLIC === true; // veřejná verze jen pro čtení
+// zkušební režim: ?den=2026-09-09 → appka se tváří, že je uvedené datum
+const TEST_TODAY = (() => {
+  const v = new URLSearchParams(location.search).get('den');
+  return /^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : null;
+})();
+function wxNow() { return TEST_TODAY ? new Date(TEST_TODAY + 'T12:00:00') : new Date(); }
 let db = null;
 let currentSection = 'dashboard';
 let isOnline = navigator.onLine;
@@ -98,6 +104,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const session = await getSession();
   if (session) {
     showApp(); navigateTo('dashboard');
+    if (TEST_TODAY) {
+      const b = document.createElement('div');
+      b.className = 'test-day-badge';
+      b.innerHTML = `<i class="ti ti-flask"></i> Zkušební režim — appka se tváří, že je ${formatDateCZ(TEST_TODAY)}`;
+      document.body.appendChild(b);
+    }
     const test = new URLSearchParams(location.search).get('wxtest');
     if (test) setTimeout(() => wxTest(test), 600);
     else wxCheckAlerts();
@@ -2853,7 +2865,7 @@ async function wxRenderStrips() {
 
   // tři dny, každý s vlastním místem podle itineráře
   const days = [0, 1, 2].map(off => {
-    const dt = new Date(); dt.setHours(12, 0, 0, 0); dt.setDate(dt.getDate() + off);
+    const dt = wxNow(); dt.setHours(12, 0, 0, 0); dt.setDate(dt.getDate() + off);
     const iso = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
     return { iso, off, stop: wxStopFor(iso) };
   });
@@ -2867,7 +2879,8 @@ async function wxRenderStrips() {
 
   const cols = days.map(({ iso, off, stop }) => {
     const d = byCity[stop.city]?.daily;
-    const i = d?.time ? d.time.indexOf(iso) : -1;
+    // ve zkušebním režimu podložíme skutečná data podle pořadí dne
+    const i = d?.time ? (TEST_TODAY ? off : d.time.indexOf(iso)) : -1;
     const label = off === 0 ? 'Dnes' : off === 1 ? 'Zítra' : wxDayLabel(iso, off);
     const body = i >= 0
       ? `<i class="ti ${wxIcon(d.weather_code[i])}"></i>
@@ -2891,7 +2904,7 @@ async function wxRenderStrips() {
 async function wxOpenDetail() {
   // 10 dní, každý s místem podle itineráře
   const days = Array.from({ length: 10 }, (_, off) => {
-    const dt = new Date(); dt.setHours(12, 0, 0, 0); dt.setDate(dt.getDate() + off);
+    const dt = wxNow(); dt.setHours(12, 0, 0, 0); dt.setDate(dt.getDate() + off);
     const iso = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
     return { iso, off, stop: wxStopFor(iso) };
   });
@@ -2905,7 +2918,7 @@ async function wxOpenDetail() {
   let lastCity = null;
   const rows = days.map(({ iso, off, stop }) => {
     const d = byCity[stop.city]?.daily;
-    const i = d?.time ? d.time.indexOf(iso) : -1;
+    const i = d?.time ? (TEST_TODAY ? off : d.time.indexOf(iso)) : -1;
     const newCity = stop.city !== lastCity;
     lastCity = stop.city;
     const place = `<span class="wx-row-place${newCity ? '' : ' dim'}">${esc(stop.city)}</span>`;
@@ -2941,6 +2954,7 @@ async function wxOpenDetail() {
       <div class="modal-body">
         <div class="wx-rows">${rows}</div>
         <div class="wx-legend"><i class="ti ti-droplet"></i> pravděpodobnost srážek · <i class="ti ti-wind"></i> nárazy větru (km/h)</div>
+        ${TEST_TODAY ? '<div class="wx-legend"><i class="ti ti-flask"></i> zkušební režim — hodnoty jsou skutečná dnešní předpověď pro daná města, jen posunutá na testované datum</div>' : ''}
       </div>
     </div>`;
 }
@@ -2962,7 +2976,11 @@ async function wxDecorateCalendar() {
     const d = data?.daily;
     if (!d || !d.time) continue;
     c.items.forEach(({ iso, cell }) => {
-      const i = d.time.indexOf(iso);
+      let i = d.time.indexOf(iso);
+      if (i < 0 && TEST_TODAY) {
+        const off = Math.round((new Date(iso + 'T12:00:00') - wxNow().setHours(12, 0, 0, 0)) / 86400000);
+        if (off >= 0 && off < d.time.length) i = off;
+      }
       if (i < 0 || cell.querySelector('.cal-wx')) return;
       cell.insertAdjacentHTML('beforeend', `<span class="cal-wx"><i class="ti ${wxIcon(d.weather_code[i])}"></i></span>`);
     });
@@ -2994,7 +3012,7 @@ function wxWhenDay(off) {
   if (off === 0) return 'Dnes';
   if (off === 1) return 'Zítra';
   if (off === -1) return 'Včera';
-  const dt = new Date(); dt.setDate(dt.getDate() + off);
+  const dt = wxNow(); dt.setDate(dt.getDate() + off);
   return `${dt.getDate()}.${dt.getMonth() + 1}.`;
 }
 
@@ -3182,7 +3200,7 @@ function formatDateShort(iso) {
   return `${d.getDate()}.${d.getMonth()+1}.`;
 }
 function formatKc(n) { return (parseFloat(n)||0).toLocaleString('cs-CZ',{maximumFractionDigits:0}); }
-function todayISO()  { return new Date().toISOString().slice(0,10); }
+function todayISO()  { return TEST_TODAY || new Date().toISOString().slice(0,10); }
 
 function countryBadge(country) {
   const map = { 'Korea':['badge-korea','KOREA'], 'Japonsko':['badge-japan','JAPONSKO'],
