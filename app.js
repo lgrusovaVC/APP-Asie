@@ -742,7 +742,9 @@ async function loadPriprava() {
   const gridHtml = `
   <div class="priprava-grid">
     ${PRIP_CATS.map(cat => {
-      const catItems = todos.filter(t => _normPripCat(t.category) === cat.name);
+      // hotové položky nahoře, nevyřízené na konci (uvnitř skupin pořadí zůstává)
+      const catItems = todos.filter(t => _normPripCat(t.category) === cat.name)
+        .slice().sort((a, b) => (b.done ? 1 : 0) - (a.done ? 1 : 0));
       const catDone = catItems.filter(t => t.done).length;
       const catPct = catItems.length ? Math.round(catDone / catItems.length * 100) : 0;
       return `
@@ -2812,7 +2814,7 @@ async function diaryExecuteDelete(id) {
 /* ════ POČASÍ & VÝSTRAHY ════════════════════════════════════ */
 const WX_PRAHA = { city: 'Praha', lat: 50.0755, lng: 14.4378 };
 const WX_STOPS = [
-  { from: '2026-09-04', to: '2026-09-09', city: 'Seoul',     lat: 37.5665, lng: 126.9780 },
+  { from: '2026-09-05', to: '2026-09-09', city: 'Seoul',     lat: 37.5665, lng: 126.9780 },
   { from: '2026-09-09', to: '2026-09-10', city: 'Gyeongju',  lat: 35.8562, lng: 129.2247 },
   { from: '2026-09-10', to: '2026-09-14', city: 'Busan',     lat: 35.1796, lng: 129.0756 },
   { from: '2026-09-14', to: '2026-09-16', city: 'Hiroshima', lat: 34.3853, lng: 132.4553 },
