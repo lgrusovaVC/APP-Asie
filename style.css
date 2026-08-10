@@ -2011,6 +2011,77 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 /* dvojice tlačítek Přidat fotky / Video v hlavičce */
 .stats-strip-add { display: flex; gap: 8px; align-items: center; }
 
+/* ══ Počasí ═════════════════════════════════════════════════ */
+.wx-strip {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 9px 12px; margin-top: 12px;
+  border: 1px solid var(--rule); background: var(--bg);
+  cursor: pointer; transition: border-color var(--transition);
+}
+.wx-strip:hover { border-color: var(--acc); }
+.wx-place {
+  display: flex; align-items: center; gap: 4px;
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink3);
+}
+.wx-place i { color: var(--acc); }
+.wx-day { display: flex; align-items: center; gap: 5px; font-size: 12.5px; }
+.wx-day-label { font-family: var(--mono); font-size: 10.5px; color: var(--ink3); }
+.wx-day i { color: var(--acc); font-size: 15px; }
+.wx-temp em { font-style: normal; color: var(--ink3); font-size: 11px; }
+.wx-more { margin-left: auto; color: var(--ink3); }
+.wx-note { font-size: 12px; color: var(--ink3); }
+.wx-desktop { display: flex; }
+.wx-mobile  { display: none; }
+@media (max-width: 900px) {
+  .wx-desktop { display: none; }
+  .wx-mobile  { display: flex; }
+}
+
+/* detail počasí */
+.wx-rows { display: flex; flex-direction: column; }
+.wx-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 2px; border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+.wx-row:last-child { border-bottom: none; }
+.wx-row-day { width: 84px; font-family: var(--mono); font-size: 11.5px; color: var(--ink2); }
+.wx-row > i { color: var(--acc); font-size: 17px; }
+.wx-row-temp { width: 74px; }
+.wx-row-temp em { font-style: normal; color: var(--ink3); font-size: 11.5px; }
+.wx-row-extra {
+  display: flex; align-items: center; gap: 3px;
+  font-family: var(--mono); font-size: 11px; color: var(--ink3);
+}
+.wx-legend {
+  margin-top: 10px; font-size: 11px; color: var(--ink3);
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+}
+
+/* ikonka v kalendáři */
+.cal-day { position: relative; }
+.cal-wx {
+  position: absolute; bottom: 3px; right: 4px;
+  font-size: 11px; color: var(--ink3); line-height: 1;
+}
+.cal-day.in-trip .cal-wx { color: var(--acc); }
+
+/* banner výstrah */
+.wx-alert-banner {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 4000;
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px;
+  background: #a32d2d; color: #fff;
+  font-size: 13px; line-height: 1.45;
+  box-shadow: 0 2px 12px rgba(28,24,21,.4);
+}
+.wx-alert-banner > i { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+.wx-alert-texts { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.wx-alert-close {
+  background: none; border: none; cursor: pointer;
+  color: #fff; font-size: 16px; padding: 2px;
+}
+
 /* piny s miniaturou — !important přebíjí leafletí width:auto pro obrázky v mapě */
 .diary-pin img {
   width: 46px !important; height: 46px !important; object-fit: cover;

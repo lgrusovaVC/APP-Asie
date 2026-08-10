@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (IS_PUBLIC) { showApp(); navigateTo('dashboard'); return; }
 
   const session = await getSession();
-  if (session) { showApp(); navigateTo('dashboard'); }
+  if (session) { showApp(); navigateTo('dashboard'); wxCheckAlerts(); }
   else          { showLogin(); }
 });
 
@@ -145,7 +145,7 @@ function setupAuthListeners() {
       btn.disabled = false;
       document.getElementById('login-btn-text').textContent = 'Přihlásit se';
     } else {
-      showApp(); navigateTo('dashboard');
+      showApp(); navigateTo('dashboard'); wxCheckAlerts();
     }
   });
 
@@ -508,6 +508,9 @@ async function loadDashboard() {
           <div class="dash-map-label-sub">~ 1 700 km · 9 měst</div>
         </div>
         ${tripMapSVG()}
+        <div class="wx-strip wx-slot wx-mobile" onclick="wxOpenDetail()" role="button" tabindex="0">
+          <span class="wx-note">Načítám počasí…</span>
+        </div>
       </div>
       <div class="dash-photos-col">
         <div class="dash-photos-header">
@@ -535,6 +538,9 @@ async function loadDashboard() {
           <span class="dash-col-link" onclick="navigateTo('priprava')">VŠE →</span>
         </div>
         ${prepItems}
+        <div class="wx-strip wx-slot wx-desktop" onclick="wxOpenDetail()" role="button" tabindex="0">
+          <span class="wx-note">Načítám počasí…</span>
+        </div>
         <div class="pull-quote-stats">
           <div>
             <div class="pull-stat-val">${dayStatVal}</div>
@@ -563,6 +569,7 @@ async function loadDashboard() {
     ${tripFooter()}`;
 
   initPhotoCarousel();
+  wxRenderStrips();
 }
 
 /* ════ PHOTO CAROUSEL ═══════════════════════════════════════ */
@@ -1744,7 +1751,7 @@ function renderCalendarMonth() {
     const types   = [...new Set(events.map(e => e.type))];
     const dots    = types.map(t => `<span class="cal-dot cal-dot-${t}"></span>`).join('');
     cells += `<div class="cal-day${inTrip?' in-trip':''}${isSel?' selected':''}${events.length?' has-events':''}"
-      ${inTrip ? `onclick="calSelectDay('${dateStr}')"` : ''}>
+      data-date="${dateStr}" ${inTrip ? `onclick="calSelectDay('${dateStr}')"` : ''}>
       <span class="cal-day-num">${d}</span>
       ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
     </div>`;
@@ -1778,6 +1785,7 @@ function renderCalendarMonth() {
     <div class="cal-weekdays">${DAYS.map(d=>`<div class="cal-weekday">${d}</div>`).join('')}</div>
     <div class="cal-grid">${cells}</div>
     ${detail}`;
+  wxDecorateCalendar();
 }
 
 function calSelectDay(dateStr) {
@@ -2780,6 +2788,211 @@ async function diaryExecuteDelete(id) {
   closeConfirm();
   if (!error) { showToast('Fotka smazána.', 'success'); loadDiary(); }
   else        { showToast('Chyba při mazání.', 'error'); }
+}
+
+/* ════ POČASÍ & VÝSTRAHY ════════════════════════════════════ */
+const WX_PRAHA = { city: 'Praha', lat: 50.0755, lng: 14.4378 };
+const WX_STOPS = [
+  { from: '2026-09-04', to: '2026-09-09', city: 'Seoul',     lat: 37.5665, lng: 126.9780 },
+  { from: '2026-09-09', to: '2026-09-10', city: 'Gyeongju',  lat: 35.8562, lng: 129.2247 },
+  { from: '2026-09-10', to: '2026-09-14', city: 'Busan',     lat: 35.1796, lng: 129.0756 },
+  { from: '2026-09-14', to: '2026-09-16', city: 'Hiroshima', lat: 34.3853, lng: 132.4553 },
+  { from: '2026-09-16', to: '2026-09-20', city: 'Kyoto',     lat: 35.0116, lng: 135.7681 },
+  { from: '2026-09-20', to: '2026-09-27', city: 'Tokyo',     lat: 35.6762, lng: 139.6503 },
+];
+
+function wxStopFor(iso) {
+  return WX_STOPS.find(s => iso >= s.from && iso < s.to) || WX_PRAHA;
+}
+
+// WMO weather code → ikona
+function wxIcon(code) {
+  if (code === 0 || code === 1) return 'ti-sun';
+  if (code === 2 || code === 3) return 'ti-cloud';
+  if (code === 45 || code === 48) return 'ti-mist';
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'ti-snowflake';
+  if (code >= 95) return 'ti-cloud-storm';
+  if (code >= 51) return 'ti-cloud-rain';
+  return 'ti-cloud';
+}
+
+// Open-Meteo s hodinovou cache (poslední známá data přežijí offline)
+async function wxFetch(stop, days = 10) {
+  const key = `wx_${stop.city}_${days}`;
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(key)); } catch {}
+  if (cached && Date.now() - cached.ts < 3600000) return cached.data;
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${stop.lat}&longitude=${stop.lng}` +
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_gusts_10m_max' +
+      `&timezone=auto&forecast_days=${days}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
+    const data = await res.json();
+    try { localStorage.setItem(key, JSON.stringify({ ts: Date.now(), data })); } catch {}
+    return data;
+  } catch { return cached ? cached.data : null; }
+}
+
+function wxDayLabel(iso, i) {
+  if (i === 0) return 'Dnes';
+  if (i === 1) return 'Zítra';
+  const CZ = ['Ne', 'Po', 'Út', 'St', 'Čt', 'Pá', 'So'];
+  return `${CZ[new Date(iso + 'T00:00:00').getDay()]} ${formatDateShort(iso)}`;
+}
+
+async function wxRenderStrips() {
+  const slots = document.querySelectorAll('.wx-slot');
+  if (!slots.length) return;
+  const stop = wxStopFor(todayISO());
+  const data = await wxFetch(stop, 10);
+  const d = data?.daily;
+  if (!d || !d.time) {
+    slots.forEach(s => { s.innerHTML = '<span class="wx-note">Počasí se nepodařilo načíst.</span>'; });
+    return;
+  }
+  const daysHtml = d.time.slice(0, 3).map((iso, i) => `
+    <span class="wx-day">
+      <span class="wx-day-label">${i === 0 ? 'Dnes' : i === 1 ? 'Zítra' : wxDayLabel(iso, i)}</span>
+      <i class="ti ${wxIcon(d.weather_code[i])}"></i>
+      <span class="wx-temp">${Math.round(d.temperature_2m_max[i])}°<em>/${Math.round(d.temperature_2m_min[i])}°</em></span>
+    </span>`).join('');
+  slots.forEach(s => {
+    s.innerHTML = `<span class="wx-place"><i class="ti ti-map-pin"></i> ${esc(stop.city)}</span>${daysHtml}<i class="ti ti-chevron-right wx-more"></i>`;
+  });
+}
+
+async function wxOpenDetail() {
+  const stop = wxStopFor(todayISO());
+  const data = await wxFetch(stop, 10);
+  const d = data?.daily;
+  if (!d || !d.time) { showToast('Počasí se nepodařilo načíst.', 'error'); return; }
+  const rows = d.time.map((iso, i) => `
+    <div class="wx-row">
+      <span class="wx-row-day">${wxDayLabel(iso, i)}</span>
+      <i class="ti ${wxIcon(d.weather_code[i])}"></i>
+      <span class="wx-row-temp">${Math.round(d.temperature_2m_max[i])}° <em>/ ${Math.round(d.temperature_2m_min[i])}°</em></span>
+      <span class="wx-row-extra"><i class="ti ti-droplet"></i> ${d.precipitation_probability_max?.[i] ?? '–'}&thinsp;%</span>
+      <span class="wx-row-extra"><i class="ti ti-wind"></i> ${Math.round(d.wind_gusts_10m_max?.[i] ?? 0)}</span>
+    </div>`).join('');
+  let ov = document.getElementById('wx-detail-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'wx-detail-overlay';
+    ov.className = 'modal-overlay';
+    ov.style.display = 'flex';
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = `
+    <div class="modal diary-place-modal">
+      <div class="modal-header">
+        <h3>Počasí — ${esc(stop.city)}</h3>
+        <button class="btn-icon" onclick="document.getElementById('wx-detail-overlay').remove()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="wx-rows">${rows}</div>
+        <div class="wx-legend"><i class="ti ti-droplet"></i> pravděpodobnost srážek · <i class="ti ti-wind"></i> nárazy větru (km/h)</div>
+      </div>
+    </div>`;
+}
+
+/* ── Ikonky počasí v kalendáři ── */
+async function wxDecorateCalendar() {
+  const cells = document.querySelectorAll('.cal-day[data-date]');
+  if (!cells.length) return;
+  const today = todayISO();
+  const byCity = {};
+  cells.forEach(cell => {
+    const iso = cell.dataset.date;
+    if (iso < today) return;
+    const stop = wxStopFor(iso);
+    (byCity[stop.city] = byCity[stop.city] || { stop, items: [] }).items.push({ iso, cell });
+  });
+  for (const c of Object.values(byCity)) {
+    const data = await wxFetch(c.stop, 16);
+    const d = data?.daily;
+    if (!d || !d.time) continue;
+    c.items.forEach(({ iso, cell }) => {
+      const i = d.time.indexOf(iso);
+      if (i < 0 || cell.querySelector('.cal-wx')) return;
+      cell.insertAdjacentHTML('beforeend', `<span class="cal-wx"><i class="ti ${wxIcon(d.weather_code[i])}"></i></span>`);
+    });
+  }
+}
+
+/* ── Výstrahy při otevření (jen privátní verze) ── */
+function wxDistKm(lat1, lng1, lat2, lng2) {
+  const R = 6371, rad = Math.PI / 180;
+  const dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+async function wxCheckAlerts() {
+  if (IS_PUBLIC || !isOnline) return;
+  try {
+    const last = parseInt(sessionStorage.getItem('wx_alerts_ts') || '0');
+    if (Date.now() - last < 3600000) return; // max 1× za hodinu
+    sessionStorage.setItem('wx_alerts_ts', String(Date.now()));
+  } catch {}
+
+  const stop = wxStopFor(todayISO());
+  const alerts = [];
+
+  // 1) zemětřesení — USGS, M ≥ 5 do 200 km za posledních 24 h
+  try {
+    const r = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson');
+    const j = await r.json();
+    (j.features || []).forEach(f => {
+      const [lng, lat] = f.geometry.coordinates;
+      const m = f.properties.mag || 0;
+      if (m >= 5 && wxDistKm(stop.lat, stop.lng, lat, lng) <= 200) {
+        alerts.push(`Zemětřesení M${m.toFixed(1)} · ${esc(f.properties.place || '')}${f.properties.tsunami ? ' · sleduj výstrahy tsunami!' : ''}`);
+      }
+    });
+  } catch {}
+
+  // 2) tajfun — GDACS Orange/Red pro Japonsko či Koreu (při nedostupnosti se tiše přeskočí)
+  try {
+    const r = await fetch('https://www.gdacs.org/gdacsapi/api/events/geteventlist/MAP?eventtypes=TC');
+    const j = await r.json();
+    (j.features || []).forEach(f => {
+      const p = f.properties || {};
+      const where = JSON.stringify(p.country || p.affectedcountries || '');
+      if ((p.alertlevel === 'Orange' || p.alertlevel === 'Red') && /japan|korea/i.test(where)) {
+        alerts.push(`Tajfun (stupeň ${p.alertlevel}) · ${esc(p.name || p.eventname || 'v regionu')}`);
+      }
+    });
+  } catch {}
+
+  // 3) extrém v předpovědi na dnešek/zítřek
+  const data = await wxFetch(stop, 3);
+  const d = data?.daily;
+  if (d && d.time) {
+    for (let i = 0; i < Math.min(2, d.time.length); i++) {
+      const kdy = i === 0 ? 'dnes' : 'zítra';
+      const gust = d.wind_gusts_10m_max?.[i] || 0;
+      const rain = d.precipitation_sum?.[i] || 0;
+      if (gust >= 90) alerts.push(`Extrémní vítr ${kdy} v ${esc(stop.city)} — nárazy až ${Math.round(gust)} km/h`);
+      if (rain >= 80) alerts.push(`Extrémní srážky ${kdy} v ${esc(stop.city)} — až ${Math.round(rain)} mm/den`);
+    }
+  }
+
+  if (alerts.length) wxShowAlertBanner(alerts);
+}
+
+function wxShowAlertBanner(alerts) {
+  document.getElementById('wx-alert-banner')?.remove();
+  const el = document.createElement('div');
+  el.id = 'wx-alert-banner';
+  el.className = 'wx-alert-banner';
+  el.innerHTML = `
+    <i class="ti ti-alert-triangle"></i>
+    <div class="wx-alert-texts">${alerts.map(a => `<div>${a}</div>`).join('')}</div>
+    <button class="wx-alert-close" onclick="document.getElementById('wx-alert-banner').remove()" title="Zavřít"><i class="ti ti-x"></i></button>`;
+  document.body.appendChild(el);
 }
 
 /* ════ TOAST ════════════════════════════════════════════════ */
