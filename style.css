@@ -1544,7 +1544,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .login-card-h2 { font-size: 26px; }
   .login-masthead > span:nth-child(2) { display: none; }
   #login-daybadge { display: none; }
-  .cal-day { min-height: 38px; }
+  .cal-day { min-height: 62px; }
   .cal-weekday { font-size: 8px; letter-spacing: 0; }
 }
 
@@ -1575,9 +1575,9 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   text-transform: uppercase;
 }
 .cal-day {
-  min-height: 58px; padding: 8px 6px 6px;
+  min-height: 86px; padding: 10px 6px 8px;
   border: 1px solid transparent;
-  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
   cursor: pointer; transition: background var(--transition), border-color var(--transition);
 }
 .cal-day { cursor: default; }
@@ -1598,7 +1598,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .cal-dot-transport     { background: #6B3FA0; }
 
 @media (max-width: 768px) {
-  .cal-day { min-height: 36px; padding: 5px 4px 4px; gap: 3px; }
+  .cal-day { min-height: 66px; padding: 7px 3px 6px; gap: 6px; }
   .cal-day-num { font-size: 11px; }
   .cal-dot { width: 4px; height: 4px; }
 }
@@ -2115,7 +2115,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .cal-day { position: relative; }
 .cal-wx {
   margin-top: auto;
-  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
   line-height: 1; color: var(--ink3);
 }
 .cal-wx i { font-size: 14px; }
