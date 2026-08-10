@@ -2978,6 +2978,26 @@ function wxDistKm(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+// hodinová data pro upřesnění, odkdy extrém nastane
+async function wxFetchHourly(stop) {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${stop.lat}&longitude=${stop.lng}` +
+      '&hourly=wind_gusts_10m,precipitation&timezone=auto&forecast_days=2';
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('hourly');
+    return await res.json();
+  } catch { return null; }
+}
+
+// „Dnes / Zítra / 20.9." podle posunu ode dneška
+function wxWhenDay(off) {
+  if (off === 0) return 'Dnes';
+  if (off === 1) return 'Zítra';
+  if (off === -1) return 'Včera';
+  const dt = new Date(); dt.setDate(dt.getDate() + off);
+  return `${dt.getDate()}.${dt.getMonth() + 1}.`;
+}
+
 async function wxCheckAlerts(forceStop) {
   if (IS_PUBLIC || !isOnline) return false;
   if (!forceStop) {
@@ -3001,7 +3021,16 @@ async function wxCheckAlerts(forceStop) {
       const [lng, lat] = c;
       const m = parseFloat(f.properties.mag) || 0;
       if (m >= 5 && wxDistKm(stop.lat, stop.lng, lat, lng) <= 200) {
-        alerts.push(`Zemětřesení M${m.toFixed(1)} · ${esc(f.properties.place || '')}${f.properties.tsunami ? ' · sleduj výstrahy tsunami!' : ''}`);
+        const t = f.properties.time;
+        let when = 'Dnes (nedávno)';
+        if (t) {
+          const mins = Math.round((Date.now() - t) / 60000);
+          const detail = mins < 60 ? `před ${mins} min` : `před ${Math.round(mins / 60)} h`;
+          const dayOff = Math.round(
+            (new Date(t).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
+          when = `${wxWhenDay(dayOff)} (${detail})`;
+        }
+        alerts.push({ when, text: `Zemětřesení M${m.toFixed(1)} · ${esc(f.properties.place || '')}${f.properties.tsunami ? ' · sleduj výstrahy tsunami!' : ''}` });
       }
     });
   } catch {}
@@ -3022,7 +3051,7 @@ async function wxCheckAlerts(forceStop) {
         const name = p.name || p.eventname || 'tropický cyklon';
         if (seen.has(name)) return;
         seen.add(name);
-        alerts.push(`Tajfun (stupeň ${p.alertlevel}) v okolí · ${esc(name)}`);
+        alerts.push({ when: 'Dnes (aktuálně)', text: `Aktivní tajfun v okolí (stupeň ${p.alertlevel}) · ${esc(name)}` });
       });
     } catch {}
   }
@@ -3031,17 +3060,39 @@ async function wxCheckAlerts(forceStop) {
   const data = await wxFetch(stop, 3);
   const d = data?.daily;
   if (d && d.time) {
+    const hourly = await wxFetchHourly(stop);
+    // najde první hodinu dne, kdy hodnota překročí práh → „(od 8 h)"
+    const firstHour = (iso, field, limit) => {
+      const h = hourly?.hourly;
+      if (!h?.time) return null;
+      for (let k = 0; k < h.time.length; k++) {
+        if (!h.time[k].startsWith(iso)) continue;
+        if ((h[field]?.[k] || 0) >= limit) return parseInt(h.time[k].slice(11, 13), 10);
+      }
+      return null;
+    };
     for (let i = 0; i < Math.min(2, d.time.length); i++) {
-      const kdy = i === 0 ? 'dnes' : 'zítra';
+      const iso = d.time[i];
       const gust = d.wind_gusts_10m_max?.[i] || 0;
       const rain = d.precipitation_sum?.[i] || 0;
-      if (gust >= 90) alerts.push(`Extrémní vítr ${kdy} v ${esc(stop.city)} — nárazy až ${Math.round(gust)} km/h`);
-      if (rain >= 80) alerts.push(`Extrémní srážky ${kdy} v ${esc(stop.city)} — až ${Math.round(rain)} mm/den`);
+      if (gust >= 90) {
+        const h = firstHour(iso, 'wind_gusts_10m', 90);
+        alerts.push({ when: `${wxWhenDay(i)} (${h != null ? `od ${h} h` : 'celý den'})`,
+          text: `Extrémní vítr v ${esc(stop.city)} — nárazy až ${Math.round(gust)} km/h` });
+      }
+      if (rain >= 80) {
+        const h = firstHour(iso, 'precipitation', 10);
+        alerts.push({ when: `${wxWhenDay(i)} (${h != null ? `od ${h} h` : 'celý den'})`,
+          text: `Extrémní srážky v ${esc(stop.city)} — až ${Math.round(rain)} mm/den` });
+      }
     }
   }
 
-  if (alerts.length) wxShowAlertBanner([...new Set(alerts)].slice(0, 5));
-  return alerts.length > 0;
+  const uniq = [];
+  const seenTexts = new Set();
+  alerts.forEach(a => { if (!seenTexts.has(a.text)) { seenTexts.add(a.text); uniq.push(a); } });
+  if (uniq.length) wxShowAlertBanner(uniq.slice(0, 5));
+  return uniq.length > 0;
 }
 
 /* ── Zkušební režim ──
@@ -3051,10 +3102,10 @@ async function wxCheckAlerts(forceStop) {
 async function wxTest(mode) {
   if (mode === 'ukazka' || mode === '1') {
     wxShowAlertBanner([
-      'Tajfun (stupeň Orange) v okolí · PEILOU-26',
-      'Zemětřesení M5.8 · 60 km od Busanu',
-      'Extrémní vítr zítra v Busanu — nárazy až 112 km/h',
-      'Extrémní srážky zítra v Busanu — až 145 mm/den',
+      { when: 'Dnes (aktuálně)', text: 'Aktivní tajfun v okolí (stupeň Orange) · PEILOU-26' },
+      { when: 'Dnes (před 3 h)', text: 'Zemětřesení M5.8 · 60 km od Busanu' },
+      { when: 'Zítra (od 8 h)',  text: 'Extrémní vítr v Busanu — nárazy až 112 km/h' },
+      { when: 'Zítra (od 14 h)', text: 'Extrémní srážky v Busanu — až 145 mm/den' },
     ]);
     return;
   }
@@ -3073,7 +3124,11 @@ function wxShowAlertBanner(alerts) {
   el.className = 'wx-alert-banner';
   el.innerHTML = `
     <i class="ti ti-alert-triangle"></i>
-    <div class="wx-alert-texts">${alerts.map(a => `<div>${a}</div>`).join('')}</div>
+    <div class="wx-alert-body">
+      <div class="wx-alert-title">Upozornění</div>
+      <div class="wx-alert-texts">${alerts.map(a =>
+        `<div class="wx-alert-item"><span class="wx-alert-when">${a.when}</span><span>${a.text}</span></div>`).join('')}</div>
+    </div>
     <button class="wx-alert-close" onclick="document.getElementById('wx-alert-banner').remove()" title="Zavřít"><i class="ti ti-x"></i></button>`;
   document.body.appendChild(el);
 }

@@ -2122,17 +2122,29 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 /* banner výstrah */
 .wx-alert-banner {
   position: fixed; top: 0; left: 0; right: 0; z-index: 4000;
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 12px 14px;
+  display: flex; align-items: flex-start; gap: 14px;
+  padding: 30px 18px 18px;
   background: #a32d2d; color: #fff;
-  font-size: 13px; line-height: 1.45;
+  font-size: 15px; line-height: 1.5;
   box-shadow: 0 2px 12px rgba(28,24,21,.4);
 }
-.wx-alert-banner > i { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
-.wx-alert-texts { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.wx-alert-banner > i { font-size: 30px; flex-shrink: 0; margin-top: 2px; }
+.wx-alert-body { flex: 1; }
+.wx-alert-title {
+  font-family: var(--serif); font-size: 1.7rem; line-height: 1.1;
+  letter-spacing: .01em; margin-bottom: 6px;
+}
+.wx-alert-texts { display: flex; flex-direction: column; gap: 6px; }
+.wx-alert-item { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.wx-alert-when {
+  flex-shrink: 0; min-width: 132px;
+  font-family: var(--mono); font-size: 13px;
+  color: rgba(255,255,255,.85);
+}
 .wx-alert-close {
   background: none; border: none; cursor: pointer;
-  color: #fff; font-size: 16px; padding: 2px;
+  color: #fff; font-size: 22px; padding: 2px;
+  flex-shrink: 0;
 }
 
 /* piny s miniaturou — !important přebíjí leafletí width:auto pro obrázky v mapě */
