@@ -2132,7 +2132,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .wx-alert-body { flex: 1; }
 .wx-alert-title {
   font-family: var(--serif); font-size: 1.7rem; line-height: 1.1;
-  letter-spacing: .01em; margin-bottom: 6px;
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px;
 }
 .wx-alert-texts { display: flex; flex-direction: column; gap: 6px; }
 .wx-alert-item { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
@@ -2140,6 +2140,17 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   flex-shrink: 0; min-width: 132px;
   font-family: var(--mono); font-size: 13px;
   color: rgba(255,255,255,.85);
+}
+@media (max-width: 640px) {
+  /* datum na vlastním řádku — těsně nad svým textem, s mezerou mezi položkami */
+  .wx-alert-texts { gap: 16px; }
+  .wx-alert-item  { gap: 1px; }
+  .wx-alert-when {
+    min-width: 100%; color: #fff;
+    text-transform: uppercase; letter-spacing: .06em; font-size: 12px;
+    border-bottom: 1px solid rgba(255,255,255,.3);
+    padding-bottom: 3px; margin-bottom: 3px;
+  }
 }
 .wx-alert-close {
   background: none; border: none; cursor: pointer;
