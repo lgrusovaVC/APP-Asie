@@ -96,8 +96,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (IS_PUBLIC) { showApp(); navigateTo('dashboard'); return; }
 
   const session = await getSession();
-  if (session) { showApp(); navigateTo('dashboard'); wxCheckAlerts(); }
-  else          { showLogin(); }
+  if (session) {
+    showApp(); navigateTo('dashboard');
+    const test = new URLSearchParams(location.search).get('wxtest');
+    if (test) setTimeout(() => wxTest(test), 600);
+    else wxCheckAlerts();
+  }
+  else { showLogin(); }
 });
 
 function checkConfig() {
@@ -2973,15 +2978,17 @@ function wxDistKm(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-async function wxCheckAlerts() {
-  if (IS_PUBLIC || !isOnline) return;
-  try {
-    const last = parseInt(sessionStorage.getItem('wx_alerts_ts') || '0');
-    if (Date.now() - last < 3600000) return; // max 1× za hodinu
-    sessionStorage.setItem('wx_alerts_ts', String(Date.now()));
-  } catch {}
+async function wxCheckAlerts(forceStop) {
+  if (IS_PUBLIC || !isOnline) return false;
+  if (!forceStop) {
+    try {
+      const last = parseInt(sessionStorage.getItem('wx_alerts_ts') || '0');
+      if (Date.now() - last < 3600000) return false; // max 1× za hodinu
+      sessionStorage.setItem('wx_alerts_ts', String(Date.now()));
+    } catch {}
+  }
 
-  const stop = wxStopFor(todayISO());
+  const stop = forceStop || wxStopFor(todayISO());
   const alerts = [];
 
   // 1) zemětřesení — USGS, M ≥ 5 do 200 km za posledních 24 h
@@ -3034,6 +3041,29 @@ async function wxCheckAlerts() {
   }
 
   if (alerts.length) wxShowAlertBanner([...new Set(alerts)].slice(0, 5));
+  return alerts.length > 0;
+}
+
+/* ── Zkušební režim ──
+   ?wxtest=ukazka  → zobrazí banner s ukázkovými výstrahami (jak to bude vypadat)
+   ?wxtest=busan   → provede skutečnou kontrolu, jako bychom už byly v Busanu
+   ?wxtest=tokyo   → totéž pro Tokio                                        */
+async function wxTest(mode) {
+  if (mode === 'ukazka' || mode === '1') {
+    wxShowAlertBanner([
+      'Tajfun (stupeň Orange) v okolí · PEILOU-26',
+      'Zemětřesení M5.8 · 60 km od Busanu',
+      'Extrémní vítr zítra v Busanu — nárazy až 112 km/h',
+      'Extrémní srážky zítra v Busanu — až 145 mm/den',
+    ]);
+    return;
+  }
+  const stop = WX_STOPS.find(s => s.city.toLowerCase() === String(mode).toLowerCase());
+  if (!stop) { showToast('Neznámé místo pro test.', 'error'); return; }
+  showToast(`Zkouším výstrahy pro ${stop.city}…`, 'info');
+  try { sessionStorage.removeItem('wx_alerts_ts'); } catch {}
+  const found = await wxCheckAlerts(stop);
+  if (!found) showToast(`Pro ${stop.city} teď žádné výstrahy nejsou.`, 'success');
 }
 
 function wxShowAlertBanner(alerts) {
