@@ -2870,7 +2870,7 @@ async function wxRenderStrips() {
       : '<span class="wx-note">—</span>';
     return `<div class="wx-col">
       <span class="wx-day-label">${label}</span>
-      <span class="wx-col-place"><i class="ti ti-map-pin"></i> ${esc(stop.city)}</span>
+      <span class="wx-col-place"><i class="ti ti-map-pin"></i><span>${esc(stop.city)}</span></span>
       <span class="wx-col-body">${body}</span>
     </div>`;
   }).join('');
@@ -2878,7 +2878,7 @@ async function wxRenderStrips() {
   const anyData = cities.some(c => byCity[c]?.daily?.time);
   slots.forEach(s => {
     s.innerHTML = anyData
-      ? `<div class="wx-cols">${cols}</div><i class="ti ti-chevron-right wx-more"></i>`
+      ? `<div class="wx-cols">${cols}</div>`
       : '<span class="wx-note">Počasí se nepodařilo načíst.</span>';
   });
 }
