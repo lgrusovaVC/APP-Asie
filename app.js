@@ -1707,11 +1707,9 @@ async function loadCalendar() {
 
   el.innerHTML = pageHeader({
     num: 8, label: 'Kalendář',
-    h1: calView === 'documents' ? 'Všechno na jednom místě' : 'Co se kdy děje',
-    accentWord: calView === 'documents' ? 'na jednom místě' : 'kdy',
-    desc: calView === 'documents'
-      ? 'Vstupenky, jízdenky a papíry, které budeme cestou potřebovat'
-      : 'Vyber den a podívej se, co máme v plánu',
+    h1: 'Co se kdy děje',
+    accentWord: 'kdy',
+    desc: 'Vyber den a podívej se, co máme v plánu',
     stats,
     addHtml: (IS_PUBLIC || calView !== 'documents') ? '' : `
       <button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}" id="doc-upload-btn"${isOnline ? '' : ' disabled'}>
@@ -1912,6 +1910,14 @@ function docDateLabel(d) {
 }
 
 function docIconClass(d) { return d.kind === 'pdf' ? 'ti-file-type-pdf' : 'ti-photo'; }
+
+// První den měsíce odjezdu. Slouží jako `min` datumových políček:
+// prázdné pole otevře v prohlížeči dnešek přiskřípnutý do povoleného rozsahu,
+// takže kalendář naskočí rovnou na září místo na aktuální měsíc.
+// Není to omezení rozsahu — horní mez schválně žádná není.
+function docPickerMin() {
+  return (CONFIG.DEPARTURE_DATE || TRIP_DEFAULT_DATE).slice(0, 8) + '01';
+}
 
 const DOC_CAT_SLUG = { 'Vstupenky':'vstupenky', 'Jízdenky':'jizdenky', 'Ostatní':'ostatni' };
 function docCatSlug(c) { return DOC_CAT_SLUG[c] || 'ostatni'; }
@@ -2170,8 +2176,10 @@ function docEditDialog(id) {
             </select>
           </div>
           <div class="form-row">
-            <div class="form-group"><label>Platí od</label><input id="doc-f-from" type="date" value="${d.date_from || ''}"></div>
-            <div class="form-group"><label>Platí do</label><input id="doc-f-to"   type="date" value="${d.date_to   || ''}"></div>
+            <div class="form-group"><label>Platí od</label>
+              <input id="doc-f-from" type="date" value="${d.date_from || ''}" min="${docPickerMin()}"></div>
+            <div class="form-group"><label>Platí do</label>
+              <input id="doc-f-to"   type="date" value="${d.date_to   || ''}" min="${docPickerMin()}"></div>
           </div>
           <p class="doc-dialog-hint">
             <i class="ti ti-info-circle"></i>
