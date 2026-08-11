@@ -11,7 +11,13 @@
       "PowerShell($css = Invoke-WebRequest -Uri \"https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css\" -UseBasicParsing; $css.StatusCode; $css.Content.Substring\\(0, 300\\))",
       "Bash(awk -F: '$2 > 1255')",
       "WebFetch(domain:api.frankfurter.app)",
-      "WebFetch(domain:api.frankfurter.dev)"
+      "WebFetch(domain:api.frankfurter.dev)",
+      "PowerShell(Get-ChildItem -Recurse -Path \"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\\\\assets\",\"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\\\\podklady\",\"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\\\\design_handoff_asia_trip\",\"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\\\\nahledy-claude\",\"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\\\\.claude\" -File -ErrorAction SilentlyContinue | Select-Object @{n='Rel';e={$_.FullName.Replace\\('C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\\\\',''\\)}}, @{n='KB';e={[math]::Round\\($_.Length/1KB,1\\)}} | Format-Table -AutoSize)",
+      "PowerShell(git -C \"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\" log --oneline --date=short --pretty=format:\"%h %ad %s\")",
+      "PowerShell($f=\"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\\\\style.css\"; \"Total lines: \" + \\(Get-Content $f | Measure-Object -Line\\).Lines; \"--- tail ---\"; Get-Content $f -Tail 25)",
+      "PowerShell($env:PYTHONIOENCODING=\"utf-8\"; [Console]::OutputEncoding=[System.Text.Encoding]::UTF8; node \"C:\\\\Users\\\\paleo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-paleo-Documents--VibeCoding-APP-Asie\\\\5f1c9ba9-155d-4958-8535-08945f83188a\\\\scratchpad\\\\t.js\")",
+      "PowerShell($py = \\(Get-Command python -ErrorAction SilentlyContinue\\); if \\($py\\) { \"python: \" + $py.Source } else { \"python: NENI\" }; $npx = \\(Get-Command npx -ErrorAction SilentlyContinue\\); if \\($npx\\) { \"npx: \" + $npx.Source } else { \"npx: NENI\" })",
+      "PowerShell(git -C \"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\" status --short)"
     ]
   }
 }

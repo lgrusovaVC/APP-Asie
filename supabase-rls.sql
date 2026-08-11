@@ -8,6 +8,10 @@
 --   • ZÁPIS, ÚPRAVA, MAZÁNÍ — povoleno jen přihlášenému uživateli
 --
 -- Lze spustit opakovaně, nic nemaže data.
+--
+-- POZOR: tabulka `documents` tu schválně NENÍ. Má přísnější pravidla
+-- (čtení jen po přihlášení) a nastavuje si je supabase-documents.sql.
+-- Kdyby se sem přidala, zveřejnila by se tím i vaše vstupenky.
 -- =============================================================
 
 DO $$

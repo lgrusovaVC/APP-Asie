@@ -24,6 +24,10 @@ const TRIP_DEFAULT_DATE = '2026-09-04';
 let calYear = 2026, calMonth = 8; // 0-indexed, 8 = září
 let calSelectedDay = null;
 let calEventMap = {};
+let calView = 'calendar';     // 'calendar' | 'documents'
+let calDocMap = {};           // 'YYYY-MM-DD' → dokumenty platné ten den
+let docSearch = '';
+let docCatFilter = null;      // název kategorie, nebo null = vše
 
 const SECTION_TITLES = {
   dashboard: 'Přehled', flights: 'Cestování', accommodations: 'Ubytování',
@@ -41,6 +45,9 @@ const PRIP_CATS = [
   { name: 'Ostatní',   svg: _S('<rect x="5" y="2" width="14" height="20"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="13" y2="15"/>') },
 ];
 const _normPripCat = c => (c === 'Doklady & pojištění' || c === 'Finance') ? 'Ostatní' : (c || 'Ostatní');
+
+const DOC_CATS = ['Vstupenky', 'Jízdenky', 'Ostatní'];
+const DOC_MAX_MB = 20;
 
 const ITINERARY = [
   { d1: 'So 5.9.',  d2: 'St 9.9.',   nights: 4, city: 'Seoul',    country: 'Korea',    tag: 'budha, Sogeumsan bridge'    },
@@ -1674,24 +1681,60 @@ const countryOpts = (val='', includeTransfer=true) => `
 /* ════ CALENDAR ═════════════════════════════════════════════ */
 async function loadCalendar() {
   const el = document.getElementById('calendar-content');
-  el.innerHTML = pageHeader({
-    num: 8, label: 'Kalendář',
-    h1: 'Co se kdy děje',
-    accentWord: 'kdy',
-    desc: 'Vyber den a podívej se, co máme v plánu',
-    stats: [],
-  }) + `<div class="section-body"><div id="cal-root" class="cal-root"></div></div>${tripFooter()}`;
 
-  const [flights, accs, acts, trans] = await Promise.all([
+  const [flights, accs, acts, trans, docs] = await Promise.all([
     fetchData('flights','date'),
     fetchData('accommodations','checkin'),
     fetchData('activities','date'),
     fetchData('transport','date'),
+    IS_PUBLIC ? Promise.resolve([]) : fetchData('documents','date_from'),
   ]);
 
   calEventMap = buildCalEventMap(flights, accs, acts, trans);
-  calSelectedDay = null;
-  renderCalendarMonth();
+  calDocMap   = buildCalDocMap(docs);
+
+  // Dokumenty jsou jen pro přihlášené — ve veřejné verzi zůstane holý kalendář.
+  const stats = IS_PUBLIC ? [] : [
+    { value: 'Kalendář',  label: 'přehled dnů',
+      click: "calSetView('calendar')",  active: calView === 'calendar' },
+    { value: 'Dokumenty', label: docCountLabel(docs.length),
+      click: "calSetView('documents')", active: calView === 'documents' },
+  ];
+
+  el.innerHTML = pageHeader({
+    num: 8, label: 'Kalendář',
+    h1: calView === 'documents' ? 'Všechno na jednom místě' : 'Co se kdy děje',
+    accentWord: calView === 'documents' ? 'na jednom místě' : 'kdy',
+    desc: calView === 'documents'
+      ? 'Vstupenky, jízdenky a papíry, které budeme cestou potřebovat'
+      : 'Vyber den a podívej se, co máme v plánu',
+    stats,
+    addHtml: (IS_PUBLIC || calView !== 'documents') ? '' : `
+      <button class="btn btn-primary btn-add${isOnline ? '' : ' disabled'}" id="doc-upload-btn"${isOnline ? '' : ' disabled'}>
+        <i class="ti ti-paperclip"></i><span class="btn-add-text"> Přidat dokument</span>
+      </button>`,
+  }) + `<div class="section-body">
+    <input type="file" id="doc-file-input" accept="image/*,application/pdf,.pdf" multiple style="display:none">
+    <div id="cal-root" class="cal-root"></div>
+  </div>${tripFooter()}`;
+
+  if (calView === 'documents') {
+    const btn = document.getElementById('doc-upload-btn');
+    if (btn) btn.addEventListener('click', () => document.getElementById('doc-file-input').click());
+    document.getElementById('doc-file-input').addEventListener('change', docHandleFiles);
+    renderDocuments();
+  } else {
+    calSelectedDay = null;
+    renderCalendarMonth();
+  }
+}
+
+function calSetView(v) {
+  if (calView === v) return;
+  calView = v;
+  docSearch = '';
+  docCatFilter = null;
+  loadCalendar();
 }
 
 function buildCalEventMap(flights, accs, acts, trans) {
@@ -1770,8 +1813,10 @@ function renderCalendarMonth() {
     const isSel   = dateStr === calSelectedDay;
     const types   = [...new Set(events.map(e => e.type))];
     const dots    = types.map(t => `<span class="cal-dot cal-dot-${t}"></span>`).join('');
+    const hasDocs = !IS_PUBLIC && (calDocMap[dateStr]||[]).length > 0;
     cells += `<div class="cal-day${inTrip?' in-trip':''}${isSel?' selected':''}${events.length?' has-events':''}"
       data-date="${dateStr}" ${inTrip ? `onclick="calSelectDay('${dateStr}')"` : ''}>
+      ${hasDocs ? '<span class="cal-clip" title="K tomuto dni jsou dokumenty"><i class="ti ti-paperclip"></i></span>' : ''}
       <span class="cal-day-num">${d}</span>
       ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
     </div>`;
@@ -1783,8 +1828,8 @@ function renderCalendarMonth() {
     const d = new Date(calSelectedDay + 'T00:00:00');
     const dayLabel = `${d.getDate()}. ${MONTH_GEN} ${d.getFullYear()}`;
     const TYPE_LABELS = { flight:'Cestování', accommodation:'Ubytování', activity:'Výlet', transport:'Doprava' };
-    if (events.length) {
-      const items = events.map(e => `
+    const body = events.length
+      ? `<div class="cal-detail-events">${events.map(e => `
         <div class="cal-event-item cal-event-${e.type} cal-event-link" onclick="calEventNav('${e.type}','${calSelectedDay}','${e.id||''}')">
           <div class="cal-event-icon"><i class="ti ${e.icon}"></i></div>
           <div class="cal-event-body">
@@ -1793,11 +1838,14 @@ function renderCalendarMonth() {
             ${e.sub ? `<div class="cal-event-sub">${e.sub}</div>` : ''}
           </div>
           <i class="ti ti-chevron-right cal-event-arrow"></i>
-        </div>`).join('');
-      detail = `<div class="cal-detail"><div class="cal-detail-date">${dayLabel}</div><div id="cal-detail-wx"></div><div class="cal-detail-events">${items}</div></div>`;
-    } else {
-      detail = `<div class="cal-detail"><div class="cal-detail-date">${dayLabel}</div><div id="cal-detail-wx"></div><div class="cal-detail-empty">Žádné naplánované události</div></div>`;
-    }
+        </div>`).join('')}</div>`
+      : '<div class="cal-detail-empty">Žádné naplánované události</div>';
+    detail = `<div class="cal-detail">
+      <div class="cal-detail-date">${dayLabel}</div>
+      <div id="cal-detail-wx"></div>
+      ${body}
+      ${calDetailDocsHtml(calSelectedDay)}
+    </div>`;
   }
 
   root.innerHTML = `
@@ -1818,6 +1866,374 @@ function calSelectDay(dateStr) {
       if (detail) detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
+}
+
+/* ════ DOKUMENTY ════════════════════════════════════════════
+   Vstupenky, jízdenky a papíry k cestě. Žijí uvnitř Kalendáře:
+   výchozí je mřížka měsíce se sponkou u dnů, které mají přílohu,
+   druhý pohled je chronologický seznam všech dokumentů.
+   Dokument bez obou dat platí pro celou cestu (pojištění) —
+   v kalendáři se schválně nezobrazuje, aby nebyl u každého dne.  */
+
+function docIsTripWide(d) { return !d.date_from && !d.date_to; }
+
+function buildCalDocMap(docs) {
+  const map = {};
+  (docs || []).forEach(doc => {
+    if (docIsTripWide(doc)) return;
+    const from = doc.date_from || doc.date_to;
+    const to   = doc.date_to   || doc.date_from;
+    let d = new Date(from + 'T00:00:00');
+    const end = new Date((to < from ? from : to) + 'T00:00:00');
+    for (let guard = 0; d <= end && guard < 400; guard++) {
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      (map[key] = map[key] || []).push(doc);
+      d.setDate(d.getDate() + 1);
+    }
+  });
+  return map;
+}
+
+function docCountLabel(n) {
+  return `${n} ${n === 1 ? 'dokument' : n >= 2 && n <= 4 ? 'dokumenty' : 'dokumentů'}`;
+}
+
+function docDateLabel(d) {
+  const f = d.date_from, t = d.date_to;
+  if (!f && !t) return 'Celá cesta';
+  if (f && t)   return f === t ? formatDateShort(f) : `${formatDateShort(f)} – ${formatDateShort(t)}`;
+  return f ? `od ${formatDateShort(f)}` : `do ${formatDateShort(t)}`;
+}
+
+function docIconClass(d) { return d.kind === 'pdf' ? 'ti-file-type-pdf' : 'ti-photo'; }
+
+const DOC_CAT_SLUG = { 'Vstupenky':'vstupenky', 'Jízdenky':'jizdenky', 'Ostatní':'ostatni' };
+function docCatSlug(c) { return DOC_CAT_SLUG[c] || 'ostatni'; }
+
+/* ── Blok dokumentů v detailu dne ── */
+function calDetailDocsHtml(iso) {
+  if (IS_PUBLIC) return '';
+  const docs = calDocMap[iso] || [];
+  if (!docs.length) return '';
+  return `<div class="cal-detail-docs">
+    <div class="cal-detail-docs-head"><i class="ti ti-paperclip"></i> Dokumenty k tomuto dni</div>
+    <div class="cal-detail-docs-list">${docs.map(d => `
+      <div class="doc-chip" onclick="docOpen('${d.id}')">
+        <i class="ti ${docIconClass(d)}"></i>
+        <span class="doc-chip-title">${esc(d.title || d.filename || 'Dokument')}</span>
+        <i class="ti ti-external-link doc-chip-arrow"></i>
+      </div>`).join('')}</div>
+  </div>`;
+}
+
+/* ── Pohled se seznamem ── */
+function renderDocuments() {
+  const root = document.getElementById('cal-root');
+  if (!root) return;
+  const all = getCache('documents') || [];
+  const counts = {};
+  all.forEach(d => { const c = d.category || 'Ostatní'; counts[c] = (counts[c] || 0) + 1; });
+
+  root.innerHTML = `
+    <div class="doc-toolbar">
+      <div class="doc-search">
+        <i class="ti ti-search"></i>
+        <input type="text" id="doc-search-input" value="${esc(docSearch)}"
+               placeholder="Hledat podle názvu…" autocomplete="off"
+               oninput="docSearchInput(this.value)">
+        <button class="doc-search-clear" id="doc-search-clear" onclick="docClearSearch()"
+                title="Zrušit hledání"${docSearch ? '' : ' hidden'}>✕</button>
+      </div>
+      <div class="doc-cats">
+        <button class="doc-cat-btn${docCatFilter ? '' : ' active'}" onclick="docSetCat(null)">Vše</button>
+        ${DOC_CATS.map(c => `
+          <button class="doc-cat-btn${docCatFilter === c ? ' active' : ''}" onclick="docSetCat('${c}')">
+            ${c}${counts[c] ? ` <em>${counts[c]}</em>` : ''}
+          </button>`).join('')}
+      </div>
+    </div>
+    <div id="doc-list"></div>`;
+  renderDocList();
+}
+
+function renderDocList() {
+  const el = document.getElementById('doc-list');
+  if (!el) return;
+  const all = getCache('documents') || [];
+
+  if (!all.length) {
+    el.innerHTML = emptyState('ti-paperclip', 'Zatím žádné dokumenty',
+      'Přidej vstupenku, jízdenku nebo kartu pojištění tlačítkem nahoře.');
+    return;
+  }
+
+  const q = docSearch.trim().toLowerCase();
+  const list = all.filter(d => {
+    if (docCatFilter && (d.category || 'Ostatní') !== docCatFilter) return false;
+    if (!q) return true;
+    return `${d.title||''} ${d.filename||''} ${d.category||''}`.toLowerCase().includes(q);
+  });
+
+  if (!list.length) {
+    el.innerHTML = emptyState('ti-search', 'Nic nenalezeno',
+      'Zkus jiné slovo nebo přepni kategorii zpět na „Vše".');
+    return;
+  }
+
+  const byTitle = (a, b) => (a.title || '').localeCompare(b.title || '', 'cs');
+  const tripWide = list.filter(docIsTripWide).sort(byTitle);
+  const dated    = list.filter(d => !docIsTripWide(d)).sort((a, b) => {
+    const af = a.date_from || a.date_to, bf = b.date_from || b.date_to;
+    return af.localeCompare(bf) || byTitle(a, b);
+  });
+
+  el.innerHTML =
+    (tripWide.length ? `<div class="doc-group">
+      <div class="doc-group-head">Platí pro celou cestu</div>
+      ${tripWide.map(docRowHtml).join('')}
+    </div>` : '') +
+    (dated.length ? `<div class="doc-group">
+      ${tripWide.length ? '<div class="doc-group-head">Podle data</div>' : ''}
+      ${dated.map(docRowHtml).join('')}
+    </div>` : '');
+}
+
+function docRowHtml(d) {
+  const cat = d.category || 'Ostatní';
+  return `<div class="doc-row" data-id="${d.id}">
+    <div class="doc-row-icon ${d.kind === 'pdf' ? 'pdf' : 'img'}"><i class="ti ${docIconClass(d)}"></i></div>
+    <div class="doc-row-body" onclick="docOpen('${d.id}')">
+      <div class="doc-row-title">${esc(d.title || d.filename || 'Dokument')}</div>
+      <div class="doc-row-meta">
+        <span class="doc-cat doc-cat-${docCatSlug(cat)}">${esc(cat)}</span>
+        <span class="doc-row-date">${docDateLabel(d)}</span>
+      </div>
+    </div>
+    ${IS_PUBLIC ? '' : `<div class="doc-row-actions">
+      <button class="btn-icon edit"   onclick="docEditDialog('${d.id}')" title="Upravit"><i class="ti ti-pencil"></i></button>
+      <button class="btn-icon delete" onclick="docConfirmDelete('${d.id}')" title="Smazat"><i class="ti ti-trash"></i></button>
+    </div>`}
+  </div>`;
+}
+
+function docSearchInput(v) {
+  docSearch = v;
+  // překresluje se jen seznam, aby kurzor zůstal v políčku
+  const clear = document.getElementById('doc-search-clear');
+  if (clear) clear.hidden = !v;
+  renderDocList();
+}
+
+function docClearSearch() {
+  const input = document.getElementById('doc-search-input');
+  if (input) { input.value = ''; input.focus(); }
+  docSearchInput('');
+}
+
+function docSetCat(c) {
+  docCatFilter = docCatFilter === c ? null : c;
+  renderDocuments();
+}
+
+/* ── Otevření dokumentu ── */
+function docOpen(id) {
+  const d = (getCache('documents') || []).find(x => x.id === id);
+  if (!d) return;
+  if (d.kind === 'pdf') window.open(d.url, '_blank', 'noopener');
+  else docOpenImage(d.url, d.title || d.filename);
+}
+
+function docOpenImage(url, title) {
+  let lb = document.getElementById('doc-lightbox');
+  if (!lb) {
+    lb = document.createElement('div');
+    lb.id = 'doc-lightbox';
+    lb.className = 'doc-lightbox';
+    lb.addEventListener('click', (e) => {
+      if (e.target === lb || e.target.closest('.doc-lb-close')) docCloseImage();
+    });
+    document.body.appendChild(lb);
+    document.addEventListener('keydown', docLbKey);
+  }
+  lb.innerHTML = `
+    <button class="doc-lb-close" title="Zavřít"><i class="ti ti-x"></i></button>
+    <div class="doc-lb-inner">
+      <img src="${esc(url)}" alt="">
+      ${title ? `<div class="doc-lb-caption">${esc(title)}</div>` : ''}
+    </div>`;
+  lb.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function docLbKey(e) {
+  const lb = document.getElementById('doc-lightbox');
+  if (lb && lb.style.display !== 'none' && e.key === 'Escape') docCloseImage();
+}
+
+function docCloseImage() {
+  const lb = document.getElementById('doc-lightbox');
+  if (lb) lb.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+/* ── Nahrávání ── */
+async function docHandleFiles(e) {
+  const files = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (!files.length) return;
+  if (!isOnline) { showToast('Nahrávání je dostupné jen online.', 'error'); return; }
+
+  const btn = document.getElementById('doc-upload-btn');
+  const origLabel = btn ? btn.innerHTML : '';
+  let ok = 0, fail = 0, lastRow = null;
+
+  for (let i = 0; i < files.length; i++) {
+    if (files[i].size > DOC_MAX_MB * 1024 * 1024) {
+      showToast(`${files[i].name} je větší než ${DOC_MAX_MB} MB — přeskočeno.`, 'error');
+      fail++; continue;
+    }
+    if (btn) btn.innerHTML = `<i class="ti ti-loader-2" style="animation:spin .8s linear infinite"></i> Nahrávám ${i+1}/${files.length}…`;
+    try { lastRow = await docUploadOne(files[i]); ok++; }
+    catch (err) { console.error('Nahrání dokumentu selhalo:', err); fail++; }
+  }
+  if (btn) btn.innerHTML = origLabel;
+
+  if (ok)   showToast(ok === 1 ? 'Dokument nahrán.' : `Nahráno dokumentů: ${ok}.`, 'success');
+  if (fail) showToast(`Nepodařilo se nahrát: ${fail}.`, 'error');
+
+  await loadCalendar();
+  // u jediného souboru rovnou nabídneme doplnění data a kategorie
+  if (ok === 1 && lastRow) docEditDialog(lastRow.id);
+}
+
+async function docUploadOne(file) {
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  const ext = (file.name.match(/\.([a-z0-9]+)$/i)?.[1] || (isPdf ? 'pdf' : 'jpg')).toLowerCase();
+  const path = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  // Dokumenty se schválně NEzmenšují (na rozdíl od fotek v Deníku) —
+  // komprese by mohla rozbít čitelnost QR a čárových kódů na vstupenkách.
+  const { error: upErr } = await db.storage.from('documents')
+    .upload(path, file, { contentType: file.type || (isPdf ? 'application/pdf' : 'image/jpeg') });
+  if (upErr) throw upErr;
+  const { data: pub } = db.storage.from('documents').getPublicUrl(path);
+
+  const { data: row, error } = await db.from('documents').insert({
+    storage_path: path,
+    url: pub.publicUrl,
+    filename: file.name,
+    title: file.name.replace(/\.[^.]+$/, '').slice(0, 120) || 'Dokument',
+    kind: isPdf ? 'pdf' : 'image',
+    category: 'Ostatní',
+  }).select().single();
+  if (error) throw error;
+  return row;
+}
+
+/* ── Úprava a mazání ── */
+function docEditDialog(id) {
+  if (IS_PUBLIC) return;
+  const d = (getCache('documents') || []).find(x => x.id === id);
+  if (!d) return;
+
+  let ov = document.getElementById('doc-dialog-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'doc-dialog-overlay';
+    ov.className = 'modal-overlay';
+    ov.addEventListener('click', (e) => { if (e.target === ov) docDialogClose(); });
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = `
+    <div class="modal doc-dialog">
+      <div class="modal-header">
+        <h3>Upravit dokument</h3>
+        <button class="btn-icon" onclick="docDialogClose()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <form class="modal-form" onsubmit="return false">
+          <div class="form-group">
+            <label>Název</label>
+            <input id="doc-f-title" type="text" maxlength="120"
+                   value="${esc(d.title || '')}" placeholder="Např. Vstupenky Tokyo Skytree">
+          </div>
+          <div class="form-group">
+            <label>Kategorie</label>
+            <select id="doc-f-cat">
+              ${DOC_CATS.map(c => `<option value="${c}"${(d.category||'Ostatní') === c ? ' selected' : ''}>${c}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Platí od</label><input id="doc-f-from" type="date" value="${d.date_from || ''}"></div>
+            <div class="form-group"><label>Platí do</label><input id="doc-f-to"   type="date" value="${d.date_to   || ''}"></div>
+          </div>
+          <p class="doc-dialog-hint">
+            <i class="ti ti-info-circle"></i>
+            <span>Nech obě data prázdná, pokud dokument platí pro celou cestu (třeba pojištění).
+            U vstupenky na jeden den stačí vyplnit „Platí od“ — druhé datum se doplní samo.</span>
+          </p>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" onclick="docConfirmDelete('${d.id}')"><i class="ti ti-trash"></i> Smazat</button>
+        <div class="modal-footer-right">
+          <button class="btn btn-ghost" onclick="docDialogClose()">Zrušit</button>
+          <button class="btn btn-primary" id="doc-save-btn" onclick="docSave('${d.id}')"><i class="ti ti-check"></i> Uložit</button>
+        </div>
+      </div>
+    </div>`;
+  ov.style.display = 'flex';
+}
+
+function docDialogClose() {
+  const ov = document.getElementById('doc-dialog-overlay');
+  if (ov) ov.style.display = 'none';
+}
+
+async function docSave(id) {
+  if (!isOnline) { showToast('Úpravy jsou dostupné jen online.', 'error'); return; }
+  const title = document.getElementById('doc-f-title').value.trim();
+  const cat   = document.getElementById('doc-f-cat').value;
+  let from    = document.getElementById('doc-f-from').value || null;
+  let to      = document.getElementById('doc-f-to').value   || null;
+  // vyplněný jen jeden konec = jednodenní platnost
+  if (from && !to) to = from;
+  if (to && !from) from = to;
+  if (from && to && to < from) { showToast('Datum „do“ je dřív než „od“.', 'error'); return; }
+
+  const btn = document.getElementById('doc-save-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .8s linear infinite"></i> Ukládám…'; }
+
+  const { error } = await db.from('documents')
+    .update({ title: title || 'Dokument', category: cat, date_from: from, date_to: to })
+    .eq('id', id);
+
+  if (error) {
+    showToast('Chyba při ukládání.', 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-check"></i> Uložit'; }
+    return;
+  }
+  showToast('Dokument uložen.', 'success');
+  docDialogClose();
+  loadCalendar();
+}
+
+function docConfirmDelete(id) {
+  if (!isOnline) { showToast('Mazání je dostupné jen online.', 'error'); return; }
+  document.getElementById('confirm-overlay').style.display = 'flex';
+  document.getElementById('confirm-ok-btn').onclick = () => docExecuteDelete(id);
+}
+
+async function docExecuteDelete(id) {
+  const d = (getCache('documents') || []).find(x => x.id === id);
+  const { error } = await db.from('documents').delete().eq('id', id);
+  if (!error && d?.storage_path) {
+    try { await db.storage.from('documents').remove([d.storage_path]); } catch {}
+  }
+  closeConfirm();
+  docDialogClose();
+  if (!error) { showToast('Dokument smazán.', 'success'); loadCalendar(); }
+  else        { showToast('Chyba při mazání.', 'error'); }
 }
 
 function calcFlightDuration(depDate, depTime, arrDate, arrTime) {
