@@ -1699,9 +1699,10 @@ async function loadCalendar() {
 
   // Dokumenty jsou jen pro přihlášené — ve veřejné verzi zůstane holý kalendář.
   const stats = IS_PUBLIC ? [] : [
-    { value: String(tripDays), label: 'dní' },
+    { value: String(tripDays), label: 'dní',
+      click: "calSetView('calendar')",   active: calView === 'calendar' },
     { value: String(docs.length), label: docWord(docs.length),
-      click: "calSetView('documents')", active: calView === 'documents' },
+      click: "calSetView('documents')",  active: calView === 'documents' },
   ];
 
   el.innerHTML = pageHeader({
@@ -1733,8 +1734,8 @@ async function loadCalendar() {
 }
 
 function calSetView(v) {
-  // druhé klepnutí na aktivní přepínač vrátí zpět na kalendář
-  calView = calView === v ? 'calendar' : v;
+  if (calView === v) return;
+  calView = v;
   docSearch = '';
   docCatFilter = null;
   loadCalendar();
