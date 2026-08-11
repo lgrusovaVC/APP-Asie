@@ -2529,6 +2529,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 
 .doc-cats { display: flex; gap: 6px; flex-wrap: wrap; }
 .doc-cat-btn {
+  display: flex; align-items: center; justify-content: center; gap: 5px;
   padding: 8px 13px; background: none; border: 1px solid var(--rule);
   font-family: var(--mono); font-size: 10.5px; color: var(--ink2);
   letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
@@ -2536,7 +2537,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 }
 .doc-cat-btn:hover { border-color: var(--acc); color: var(--ink); }
 .doc-cat-btn.active { background: var(--acc); border-color: var(--acc); color: #fff; }
-.doc-cat-btn em { font-style: normal; opacity: .6; margin-left: 2px; }
+.doc-cat-btn em { font-style: normal; opacity: .6; }
 
 /* ── Seznam dokumentů ── */
 .doc-group + .doc-group { margin-top: 26px; }
@@ -2545,28 +2546,22 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   letter-spacing: .12em; text-transform: uppercase;
   padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid var(--rule);
 }
+/* Vlevo pevně široký sloupec s typem dokumentu a datem, vpravo název.
+   Pevná šířka drží štítky i data pod sebou zarovnané přes celý seznam. */
 .doc-row {
-  display: grid; grid-template-columns: 44px 1fr auto;
-  align-items: center; gap: 14px;
+  display: grid; grid-template-columns: 112px 1fr;
+  align-items: start; gap: 16px;
   padding: 12px 14px; background: var(--alt);
   border: 1px solid transparent; border-left: 3px solid var(--rule);
+  cursor: pointer;
   transition: background var(--transition), border-color var(--transition);
 }
 .doc-row + .doc-row { margin-top: 6px; }
 .doc-row:hover { background: var(--rule); border-left-color: var(--acc); }
-.doc-row-icon {
-  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--rule); background: var(--bg);
+
+.doc-row-lead {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0;
 }
-.doc-row-icon i { font-size: 20px; }
-.doc-row-icon.pdf i { color: var(--acc); }
-.doc-row-icon.img i { color: var(--ink3); }
-.doc-row-body { cursor: pointer; min-width: 0; }
-.doc-row-title {
-  font-family: var(--sans); font-size: 14px; color: var(--ink);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.doc-row-meta { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
 .doc-cat {
   font-family: var(--mono); font-size: 9px; letter-spacing: .1em;
   text-transform: uppercase; padding: 2px 7px; border: 1px solid;
@@ -2574,23 +2569,44 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .doc-cat-vstupenky { color: #2A7A3A; border-color: rgba(42,122,58,.4); }
 .doc-cat-jizdenky  { color: #1A55A0; border-color: rgba(26,85,160,.4); }
 .doc-cat-ostatni   { color: var(--ink3); border-color: var(--rule); }
-.doc-row-date { font-family: var(--mono); font-size: 11.5px; color: var(--ink3); }
-.doc-row-actions { display: flex; gap: 4px; }
-.doc-row-actions .btn-icon { opacity: .4; transition: opacity var(--transition); }
-.doc-row:hover .doc-row-actions .btn-icon { opacity: .75; }
-.doc-row-actions .btn-icon:hover { opacity: 1; color: var(--acc); }
+.doc-row-date {
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  color: var(--ink); line-height: 1.3;
+}
+
+.doc-row-main { min-width: 0; }
+.doc-row-title {
+  font-family: var(--sans); font-size: 14px; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.doc-row-sub {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  margin-top: 5px; min-height: 20px;
+}
+.doc-row-kind {
+  display: flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 9.5px; color: var(--ink3);
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.doc-row-kind i { font-size: 14px; }
+.doc-row-edit { opacity: .4; flex-shrink: 0; transition: opacity var(--transition); }
+.doc-row:hover .doc-row-edit { opacity: .8; }
+.doc-row-edit:hover { opacity: 1; color: var(--acc); }
 
 @media (max-width: 768px) {
   .doc-toolbar { gap: 10px; margin-bottom: 16px; }
   .doc-search { min-width: 100%; }
   .doc-cats { width: 100%; }
-  .doc-cat-btn { flex: 1; text-align: center; padding: 8px 6px; font-size: 10px; }
-  .doc-row { grid-template-columns: 38px 1fr auto; gap: 10px; padding: 10px 11px; }
-  .doc-row-icon { width: 38px; height: 38px; }
-  .doc-row-icon i { font-size: 17px; }
-  .doc-row-title { font-size: 13px; }
-  .doc-row-meta { gap: 7px; }
-  .doc-row-actions .btn-icon { opacity: .75; }
+  /* číslo vždy pod názvem kategorie — jinak se u delších názvů láme nahodile */
+  .doc-cat-btn {
+    flex: 1; flex-direction: column; gap: 2px;
+    padding: 7px 4px; font-size: 10px; text-align: center;
+  }
+  .doc-row { grid-template-columns: 96px 1fr; gap: 11px; padding: 10px 11px; }
+  .doc-row-lead { gap: 5px; }
+  .doc-row-date { font-size: 11px; }
+  .doc-row-title { font-size: 13px; white-space: normal; }
+  .doc-row-edit { opacity: .8; }
 }
 
 /* ── Dialog úpravy ── */

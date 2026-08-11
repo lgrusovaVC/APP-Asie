@@ -1910,6 +1910,7 @@ function docDateLabel(d) {
 }
 
 function docIconClass(d) { return d.kind === 'pdf' ? 'ti-file-type-pdf' : 'ti-photo'; }
+function docKindLabel(d) { return d.kind === 'pdf' ? 'PDF' : 'Obrázek'; }
 
 // První den měsíce odjezdu. Slouží jako `min` datumových políček:
 // prázdné pole otevře v prohlížeči dnešek přiskřípnutý do povoleného rozsahu,
@@ -1957,10 +1958,12 @@ function renderDocuments() {
                 title="Zrušit hledání"${docSearch ? '' : ' hidden'}>✕</button>
       </div>
       <div class="doc-cats">
-        <button class="doc-cat-btn${docCatFilter ? '' : ' active'}" onclick="docSetCat(null)">Vše</button>
+        <button class="doc-cat-btn${docCatFilter ? '' : ' active'}" onclick="docSetCat(null)">
+          <span>Vše</span><em>${all.length}</em>
+        </button>
         ${DOC_CATS.map(c => `
           <button class="doc-cat-btn${docCatFilter === c ? ' active' : ''}" onclick="docSetCat('${c}')">
-            ${c}${counts[c] ? ` <em>${counts[c]}</em>` : ''}
+            <span>${c}</span><em>${counts[c] || 0}</em>
           </button>`).join('')}
       </div>
     </div>
@@ -2010,21 +2013,23 @@ function renderDocList() {
     </div>` : '');
 }
 
+// Řádek seznamu: vlevo typ dokumentu a datum (to je při hledání to podstatné),
+// vpravo název a pod ním typ souboru s tlačítkem úpravy. Mazání je jen v editaci.
 function docRowHtml(d) {
   const cat = d.category || 'Ostatní';
-  return `<div class="doc-row" data-id="${d.id}">
-    <div class="doc-row-icon ${d.kind === 'pdf' ? 'pdf' : 'img'}"><i class="ti ${docIconClass(d)}"></i></div>
-    <div class="doc-row-body" onclick="docOpen('${d.id}')">
+  return `<div class="doc-row" data-id="${d.id}" onclick="docOpen('${d.id}')">
+    <div class="doc-row-lead">
+      <span class="doc-cat doc-cat-${docCatSlug(cat)}">${esc(cat)}</span>
+      <span class="doc-row-date">${docDateLabel(d)}</span>
+    </div>
+    <div class="doc-row-main">
       <div class="doc-row-title">${esc(d.title || d.filename || 'Dokument')}</div>
-      <div class="doc-row-meta">
-        <span class="doc-cat doc-cat-${docCatSlug(cat)}">${esc(cat)}</span>
-        <span class="doc-row-date">${docDateLabel(d)}</span>
+      <div class="doc-row-sub">
+        <span class="doc-row-kind"><i class="ti ${docIconClass(d)}"></i>${docKindLabel(d)}</span>
+        ${IS_PUBLIC ? '' : `<button class="btn-icon edit doc-row-edit" title="Upravit"
+          onclick="event.stopPropagation(); docEditDialog('${d.id}')"><i class="ti ti-pencil"></i></button>`}
       </div>
     </div>
-    ${IS_PUBLIC ? '' : `<div class="doc-row-actions">
-      <button class="btn-icon edit"   onclick="docEditDialog('${d.id}')" title="Upravit"><i class="ti ti-pencil"></i></button>
-      <button class="btn-icon delete" onclick="docConfirmDelete('${d.id}')" title="Smazat"><i class="ti ti-trash"></i></button>
-    </div>`}
   </div>`;
 }
 

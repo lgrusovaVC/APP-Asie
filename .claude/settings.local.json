@@ -17,7 +17,9 @@
       "PowerShell($f=\"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\\\\style.css\"; \"Total lines: \" + \\(Get-Content $f | Measure-Object -Line\\).Lines; \"--- tail ---\"; Get-Content $f -Tail 25)",
       "PowerShell($env:PYTHONIOENCODING=\"utf-8\"; [Console]::OutputEncoding=[System.Text.Encoding]::UTF8; node \"C:\\\\Users\\\\paleo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-paleo-Documents--VibeCoding-APP-Asie\\\\5f1c9ba9-155d-4958-8535-08945f83188a\\\\scratchpad\\\\t.js\")",
       "PowerShell($py = \\(Get-Command python -ErrorAction SilentlyContinue\\); if \\($py\\) { \"python: \" + $py.Source } else { \"python: NENI\" }; $npx = \\(Get-Command npx -ErrorAction SilentlyContinue\\); if \\($npx\\) { \"npx: \" + $npx.Source } else { \"npx: NENI\" })",
-      "PowerShell(git -C \"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\" status --short)"
+      "PowerShell(git -C \"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\" status --short)",
+      "PowerShell(git -C \"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\" log --oneline -3)",
+      "PowerShell(\"---\")"
     ]
   }
 }
