@@ -1693,11 +1693,14 @@ async function loadCalendar() {
   calEventMap = buildCalEventMap(flights, accs, acts, trans);
   calDocMap   = buildCalDocMap(docs);
 
+  // délka cesty včetně prvního i posledního dne
+  const tripDays = Math.round(
+    (new Date(CONFIG.RETURN_DATE + 'T00:00:00') - new Date(CONFIG.DEPARTURE_DATE + 'T00:00:00')) / 86400000) + 1;
+
   // Dokumenty jsou jen pro přihlášené — ve veřejné verzi zůstane holý kalendář.
   const stats = IS_PUBLIC ? [] : [
-    { value: 'Kalendář',  label: 'přehled dnů',
-      click: "calSetView('calendar')",  active: calView === 'calendar' },
-    { value: 'Dokumenty', label: docCountLabel(docs.length),
+    { value: String(tripDays), label: 'dní' },
+    { value: String(docs.length), label: docWord(docs.length),
       click: "calSetView('documents')", active: calView === 'documents' },
   ];
 
@@ -1730,8 +1733,8 @@ async function loadCalendar() {
 }
 
 function calSetView(v) {
-  if (calView === v) return;
-  calView = v;
+  // druhé klepnutí na aktivní přepínač vrátí zpět na kalendář
+  calView = calView === v ? 'calendar' : v;
   docSearch = '';
   docCatFilter = null;
   loadCalendar();
@@ -1894,8 +1897,10 @@ function buildCalDocMap(docs) {
   return map;
 }
 
-function docCountLabel(n) {
-  return `${n} ${n === 1 ? 'dokument' : n >= 2 && n <= 4 ? 'dokumenty' : 'dokumentů'}`;
+// 1 dokument · 2–4 dokumenty · 0 a 5+ dokumentů
+function docWord(n) {
+  if (n === 1) return 'dokument';
+  return (n >= 2 && n <= 4) ? 'dokumenty' : 'dokumentů';
 }
 
 function docDateLabel(d) {
