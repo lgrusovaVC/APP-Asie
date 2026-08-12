@@ -184,6 +184,8 @@ function setupAuthListeners() {
 
   document.getElementById('logout-btn-sidebar').addEventListener('click', logout);
   document.getElementById('logout-btn-topbar').addEventListener('click',  logout);
+  document.getElementById('trash-btn-sidebar')?.addEventListener('click', trashOpen);
+  document.getElementById('trash-btn-topbar')?.addEventListener('click',  trashOpen);
 }
 
 async function logout() { await db.auth.signOut(); showLogin(); }
@@ -329,11 +331,25 @@ function handleFilterClick(btn) {
 async function fetchData(table, order = 'created_at') {
   if (!isOnline) return getCache(table);
   try {
-    const { data, error } = await db.from(table).select('*').order(order, { ascending: true });
+    let { data, error } = await db.from(table).select('*')
+      .is('deleted_at', null).order(order, { ascending: true });
+    // Dokud se v Supabase nespustí supabase-kos.sql, sloupec deleted_at
+    // ještě neexistuje — pak načteme data postaru, ať appka funguje dál.
+    if (error) {
+      ({ data, error } = await db.from(table).select('*').order(order, { ascending: true }));
+    }
     if (error) throw error;
     setCache(table, data);
     return data;
   } catch { return getCache(table); }
+}
+
+// Mazání v celé aplikaci je vratné — záznam se jen orazítkuje časem
+// a zmizí ze seznamů. Nenávratně ho smaže až vysypání koše.
+async function softDelete(table, id) {
+  const { error } = await db.from(table)
+    .update({ deleted_at: new Date().toISOString() }).eq('id', id);
+  return !error;
 }
 function setCache(t, d) { try { localStorage.setItem(`cache_${t}`, JSON.stringify(d)); } catch {} }
 function getCache(t)    { try { return JSON.parse(localStorage.getItem(`cache_${t}`)) || []; } catch { return []; } }
@@ -710,8 +726,8 @@ async function todoSaveEdit(id, textEl, newText, oldText) {
 
 async function todoDelete(id) {
   if (IS_PUBLIC) return;
-  const { error } = await db.from('todos').delete().eq('id', id);
-  if (error) { showToast('Nepodařilo se smazat úkol.', 'error'); return; }
+  if (!await softDelete('todos', id)) { showToast('Nepodařilo se smazat úkol.', 'error'); return; }
+  showToast('Úkol přesunut do koše.', 'success');
   await refreshTodos();
 }
 
@@ -832,8 +848,8 @@ function _refreshPripStats() {
 }
 
 async function pripDelete(id) {
-  const { error } = await db.from('todos').delete().eq('id', id);
-  if (error) { showToast('Nepodařilo se smazat.', 'error'); return; }
+  if (!await softDelete('todos', id)) { showToast('Nepodařilo se smazat.', 'error'); return; }
+  showToast('Úkol přesunut do koše.', 'success');
   await loadPriprava();
 }
 
@@ -1655,10 +1671,10 @@ function confirmDelete(section, id) {
 async function executeDelete() {
   if (!pendingDelete) return;
   const { section, id } = pendingDelete;
-  const { error } = await db.from(sectionToTable(section)).delete().eq('id', id);
+  const ok = await softDelete(sectionToTable(section), id);
   closeConfirm();
-  if (!error) { showToast('Záznam smazán.', 'success'); loadSection(section==='expenses'?'budget':section); }
-  else         { showToast('Chyba při mazání.', 'error'); }
+  if (ok) { showToast('Záznam přesunut do koše.', 'success'); loadSection(section==='expenses'?'budget':section); }
+  else    { showToast('Chyba při mazání.', 'error'); }
 }
 function closeConfirm() {
   document.getElementById('confirm-overlay').style.display = 'none';
@@ -2253,15 +2269,12 @@ function docConfirmDelete(id) {
 }
 
 async function docExecuteDelete(id) {
-  const d = (getCache('documents') || []).find(x => x.id === id);
-  const { error } = await db.from('documents').delete().eq('id', id);
-  if (!error && d?.storage_path) {
-    try { await db.storage.from('documents').remove([d.storage_path]); } catch {}
-  }
+  // soubor v úložišti zůstává až do vysypání koše (viz diaryExecuteDelete)
+  const ok = await softDelete('documents', id);
   closeConfirm();
   docDialogClose();
-  if (!error) { showToast('Dokument smazán.', 'success'); loadCalendar(); }
-  else        { showToast('Chyba při mazání.', 'error'); }
+  if (ok) { showToast('Dokument přesunut do koše.', 'success'); loadCalendar(); }
+  else    { showToast('Chyba při mazání.', 'error'); }
 }
 
 function calcFlightDuration(depDate, depTime, arrDate, arrTime) {
@@ -3245,14 +3258,12 @@ function diaryConfirmDelete(id) {
 }
 
 async function diaryExecuteDelete(id) {
-  const p = getCache('photos').find(x => x.id === id);
-  const { error } = await db.from('photos').delete().eq('id', id);
-  if (!error && p?.storage_path) {
-    try { await db.storage.from('photos').remove([p.storage_path]); } catch {}
-  }
+  // Soubor v úložišti zůstává — smaže se až vysypáním z koše,
+  // jinak by se dala vrátit jen prázdná slupka bez fotky.
+  const ok = await softDelete('photos', id);
   closeConfirm();
-  if (!error) { showToast('Fotka smazána.', 'success'); loadDiary(); }
-  else        { showToast('Chyba při mazání.', 'error'); }
+  if (ok) { showToast('Fotka přesunuta do koše.', 'success'); loadDiary(); }
+  else    { showToast('Chyba při mazání.', 'error'); }
 }
 
 /* ════ POČASÍ & VÝSTRAHY ════════════════════════════════════ */
@@ -3649,6 +3660,159 @@ function wxShowAlertBanner(alerts) {
     </div>
     <button class="wx-alert-close" onclick="document.getElementById('wx-alert-banner').remove()" title="Zavřít"><i class="ti ti-x"></i></button>`;
   document.body.appendChild(el);
+}
+
+/* ════ KOŠ ══════════════════════════════════════════════════
+   Smazané záznamy ze všech sekcí na jednom místě.
+   Každá tabulka má jiná pole, proto si tu ke každé držíme
+   předpis, jak z řádku udělat čitelný popisek.              */
+
+const TRASH_KINDS = [
+  { table: 'flights',        sekce: 'Cestování',  ikona: 'ti-plane',
+    popis: r => `${r.from_airport || '?'} → ${r.to_airport || '?'}`, detail: r => formatDateCZ(r.date) },
+  { table: 'accommodations', sekce: 'Ubytování',  ikona: 'ti-bed',
+    popis: r => r.name, detail: r => `${formatDateShort(r.checkin)} – ${formatDateShort(r.checkout)}` },
+  { table: 'activities',     sekce: 'Místa',      ikona: 'ti-map-pin',
+    popis: r => r.name, detail: r => r.location || '' },
+  { table: 'restaurants',    sekce: 'Restaurace', ikona: 'ti-tools-kitchen-2',
+    popis: r => r.name, detail: r => r.cuisine_type || '' },
+  { table: 'transport',      sekce: 'Jízdní řády', ikona: 'ti-train',
+    popis: r => `${r.route_from || '?'} → ${r.route_to || '?'}`, detail: r => formatDateCZ(r.date) },
+  { table: 'expenses',       sekce: 'Rozpočet',   ikona: 'ti-cash',
+    popis: r => r.description || r.category, detail: r => `${formatKc(r.amount_czk)} Kč` },
+  { table: 'todos',          sekce: 'Příprava',   ikona: 'ti-checkbox',
+    popis: r => r.text, detail: r => r.category || '' },
+  { table: 'photos',         sekce: 'Deník',      ikona: 'ti-camera',
+    popis: r => r.caption || r.place || 'Fotka', detail: r => r.place || '' },
+  { table: 'documents',      sekce: 'Dokumenty',  ikona: 'ti-paperclip',
+    popis: r => r.title || r.filename || 'Dokument', detail: r => r.category || '' },
+];
+
+let trashItems = [];
+
+function trashWhen(iso) {
+  if (!iso) return '';
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1)  return 'právě teď';
+  if (mins < 60) return `před ${mins} min`;
+  const hod = Math.round(mins / 60);
+  if (hod < 24)  return hod === 1 ? 'před hodinou' : `před ${hod} h`;
+  const dny = Math.round(hod / 24);
+  if (dny === 1) return 'včera';
+  if (dny < 31)  return `před ${dny} dny`;
+  return formatDateCZ(iso.slice(0, 10));
+}
+
+async function trashOpen() {
+  if (IS_PUBLIC) return;
+  if (!isOnline) { showToast('Koš je dostupný jen online.', 'error'); return; }
+
+  let ov = document.getElementById('trash-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'trash-overlay';
+    ov.className = 'modal-overlay trash-overlay';
+    ov.addEventListener('click', (e) => { if (e.target === ov) trashClose(); });
+    document.body.appendChild(ov);
+  }
+  ov.innerHTML = `
+    <div class="modal trash-modal">
+      <div class="modal-header">
+        <h3><i class="ti ti-trash"></i> Koš</h3>
+        <button class="btn-icon" onclick="trashClose()"><i class="ti ti-x"></i></button>
+      </div>
+      <div class="modal-body"><div id="trash-body" class="trash-loading">
+        <i class="ti ti-loader-2" style="animation:spin .8s linear infinite"></i> Načítám…
+      </div></div>
+    </div>`;
+  ov.style.display = 'flex';
+
+  trashItems = await trashFetch();
+  trashRender();
+}
+
+function trashClose() {
+  const ov = document.getElementById('trash-overlay');
+  if (ov) ov.style.display = 'none';
+}
+
+async function trashFetch() {
+  const out = [];
+  await Promise.all(TRASH_KINDS.map(async k => {
+    const { data, error } = await db.from(k.table).select('*')
+      .not('deleted_at', 'is', null)
+      .order('deleted_at', { ascending: false });
+    if (!error && data) data.forEach(r => out.push({ kind: k, row: r }));
+  }));
+  out.sort((a, b) => String(b.row.deleted_at || '').localeCompare(String(a.row.deleted_at || '')));
+  return out;
+}
+
+function trashRender() {
+  const el = document.getElementById('trash-body');
+  if (!el) return;
+  el.className = '';
+
+  if (!trashItems.length) {
+    el.innerHTML = emptyState('ti-trash', 'Koš je prázdný',
+      'Smazané záznamy se sem ukládají, dokud je odsud nevyhodíš.');
+    return;
+  }
+
+  el.innerHTML = `
+    <p class="trash-hint">
+      <i class="ti ti-info-circle"></i>
+      <span>Tyhle záznamy nikde v aplikaci nejsou vidět, ale nejsou pryč.
+      Vrátit je můžeš kdykoliv — nenávratně zmizí až tlačítkem „Smazat navždy“.</span>
+    </p>
+    <div class="trash-list">${trashItems.map(({ kind, row }) => `
+      <div class="trash-row">
+        <div class="trash-row-icon"><i class="ti ${kind.ikona}"></i></div>
+        <div class="trash-row-body">
+          <div class="trash-row-title">${esc(kind.popis(row) || '(bez názvu)')}</div>
+          <div class="trash-row-meta">
+            <span class="trash-row-sekce">${kind.sekce}</span>
+            ${kind.detail(row) ? `<span>${esc(kind.detail(row))}</span>` : ''}
+            <span class="trash-row-when">${trashWhen(row.deleted_at)}</span>
+          </div>
+        </div>
+        <div class="trash-row-actions">
+          <button class="btn btn-ghost trash-btn" onclick="trashRestore('${kind.table}','${row.id}')">
+            <i class="ti ti-arrow-back-up"></i> Vrátit
+          </button>
+          <button class="btn-icon delete" title="Smazat navždy"
+                  onclick="trashPurgeConfirm('${kind.table}','${row.id}')"><i class="ti ti-trash-x"></i></button>
+        </div>
+      </div>`).join('')}</div>`;
+}
+
+async function trashRestore(table, id) {
+  if (!isOnline) { showToast('Koš je dostupný jen online.', 'error'); return; }
+  const { error } = await db.from(table).update({ deleted_at: null }).eq('id', id);
+  if (error) { showToast('Vrácení se nepodařilo.', 'error'); return; }
+  showToast('Záznam vrácen zpět.', 'success');
+  trashItems = trashItems.filter(x => !(x.kind.table === table && x.row.id === id));
+  trashRender();
+  loadSection(currentSection);
+}
+
+function trashPurgeConfirm(table, id) {
+  document.getElementById('confirm-overlay').style.display = 'flex';
+  document.getElementById('confirm-ok-btn').onclick = () => trashPurge(table, id);
+}
+
+async function trashPurge(table, id) {
+  const item = trashItems.find(x => x.kind.table === table && x.row.id === id);
+  const { error } = await db.from(table).delete().eq('id', id);
+  // teprve teď zmizí i soubor v úložišti (bucket se jmenuje stejně jako tabulka)
+  if (!error && item?.row.storage_path && (table === 'photos' || table === 'documents')) {
+    try { await db.storage.from(table).remove([item.row.storage_path]); } catch {}
+  }
+  closeConfirm();
+  if (error) { showToast('Smazání se nepodařilo.', 'error'); return; }
+  showToast('Záznam nenávratně smazán.', 'success');
+  trashItems = trashItems.filter(x => !(x.kind.table === table && x.row.id === id));
+  trashRender();
 }
 
 /* ════ TOAST ════════════════════════════════════════════════ */

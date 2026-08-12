@@ -19,7 +19,8 @@
       "PowerShell($py = \\(Get-Command python -ErrorAction SilentlyContinue\\); if \\($py\\) { \"python: \" + $py.Source } else { \"python: NENI\" }; $npx = \\(Get-Command npx -ErrorAction SilentlyContinue\\); if \\($npx\\) { \"npx: \" + $npx.Source } else { \"npx: NENI\" })",
       "PowerShell(git -C \"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\" status --short)",
       "PowerShell(git -C \"C:\\\\Users\\\\paleo\\\\Documents\\\\_VibeCoding\\\\APP Asie\" log --oneline -3)",
-      "PowerShell(\"---\")"
+      "PowerShell(\"---\")",
+      "Bash(node --check \"C:/Users/paleo/Documents/_VibeCoding/APP Asie/app.js\")"
     ]
   }
 }

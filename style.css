@@ -2662,3 +2662,83 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .doc-lb-close { top: 8px; right: 8px; width: 32px; height: 32px; }
   .doc-lb-inner img { max-height: calc(100dvh - 90px); }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   KOŠ — smazané záznamy ze všech sekcí
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Nenápadná ikona v postranním menu a v mobilní liště ── */
+.sidebar-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.btn-trash {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex-shrink: 0;
+  background: none; border: none; cursor: pointer;
+  color: var(--sb-muted); font-size: 15px; opacity: .55;
+  transition: opacity var(--transition), color var(--transition);
+}
+.btn-trash:hover { opacity: 1; color: var(--sb-text); }
+
+/* Koš leží pod potvrzovacím oknem (z-index 100), aby ho nepřekryl
+   při dotazu na trvalé smazání — zůstane vidět vzadu. */
+.trash-overlay { z-index: 90; }
+.trash-modal { max-width: 620px; }
+.trash-modal .modal-header h3 { display: flex; align-items: center; gap: 8px; }
+.trash-modal .modal-header i { color: var(--acc); font-size: 1rem; }
+.trash-loading {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 12px; color: var(--ink3); padding: 8px 0;
+}
+
+.trash-hint {
+  display: flex; gap: 8px; margin: 0 0 16px;
+  font-size: 12px; line-height: 1.5; color: var(--ink3);
+}
+.trash-hint i { color: var(--acc); font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+.trash-list { display: flex; flex-direction: column; gap: 6px; }
+.trash-row {
+  display: grid; grid-template-columns: 34px 1fr auto;
+  align-items: center; gap: 12px;
+  padding: 10px 12px; background: var(--alt);
+  border-left: 3px solid var(--rule);
+}
+.trash-row:hover { border-left-color: var(--acc); }
+.trash-row-icon {
+  width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--rule); background: var(--bg); color: var(--ink3);
+}
+.trash-row-icon i { font-size: 17px; }
+.trash-row-body { min-width: 0; }
+.trash-row-title {
+  font-family: var(--sans); font-size: 13.5px; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.trash-row-meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 3px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--ink3);
+}
+.trash-row-sekce {
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  padding: 1px 6px; border: 1px solid var(--rule); color: var(--ink2);
+}
+.trash-row-when { margin-left: auto; }
+.trash-row-actions { display: flex; align-items: center; gap: 6px; }
+.trash-btn {
+  padding: 6px 11px; font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: .06em; text-transform: uppercase;
+}
+.trash-btn i { font-size: 14px; }
+.trash-row-actions .btn-icon.delete { opacity: .45; transition: opacity var(--transition); }
+.trash-row:hover .btn-icon.delete { opacity: .8; }
+.trash-row-actions .btn-icon.delete:hover { opacity: 1; color: var(--acc); }
+
+@media (max-width: 768px) {
+  .trash-modal { max-width: 100%; }
+  .trash-row { grid-template-columns: 30px 1fr; gap: 10px; padding: 10px; }
+  .trash-row-icon { width: 30px; height: 30px; }
+  .trash-row-icon i { font-size: 15px; }
+  .trash-row-title { font-size: 13px; white-space: normal; }
+  /* tlačítka pod obsah, ať se na úzké obrazovce nemačkají */
+  .trash-row-actions { grid-column: 1 / -1; justify-content: flex-end; margin-top: 2px; }
+  .trash-row-when { margin-left: 0; }
+}
