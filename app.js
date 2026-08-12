@@ -1902,11 +1902,19 @@ function docWord(n) {
   return (n >= 2 && n <= 4) ? 'dokumenty' : 'dokumentů';
 }
 
-function docDateLabel(d) {
+// Datum ve dvou řádcích — v úzkém sloupci se tak vejde i rozsah velkým písmem.
+// Dokument platný pro celou cestu žádné datum nemá, místo zůstane prázdné.
+function docDateHtml(d) {
   const f = d.date_from, t = d.date_to;
-  if (!f && !t) return 'Celá cesta';
-  if (f && t)   return f === t ? formatDateShort(f) : `${formatDateShort(f)} – ${formatDateShort(t)}`;
-  return f ? `od ${formatDateShort(f)}` : `do ${formatDateShort(t)}`;
+  // spojka (pomlčka, od, do) jde na vlastní řádek menším šedým písmem,
+  // aby obě data zůstala stejně široká a sloupec se nelámal do zubů
+  const sep = s => `<span class="doc-date-sep">${s}</span>`;
+  const date = s => `<span>${formatDateShort(s)}</span>`;
+  if (!f && !t) return '';
+  if (f && t) {
+    return f === t ? date(f) : `${date(f)}${sep('–')}${date(t)}`;
+  }
+  return f ? `${sep('od')}${date(f)}` : `${sep('do')}${date(t)}`;
 }
 
 function docIconClass(d) { return d.kind === 'pdf' ? 'ti-file-type-pdf' : 'ti-photo'; }
@@ -2018,10 +2026,8 @@ function renderDocList() {
 function docRowHtml(d) {
   const cat = d.category || 'Ostatní';
   return `<div class="doc-row" data-id="${d.id}" onclick="docOpen('${d.id}')">
-    <div class="doc-row-lead">
-      <span class="doc-cat doc-cat-${docCatSlug(cat)}">${esc(cat)}</span>
-      <span class="doc-row-date">${docDateLabel(d)}</span>
-    </div>
+    <span class="doc-cat doc-cat-${docCatSlug(cat)}">${esc(cat)}</span>
+    <span class="doc-row-date">${docDateHtml(d)}</span>
     <div class="doc-row-main">
       <div class="doc-row-title">${esc(d.title || d.filename || 'Dokument')}</div>
       <div class="doc-row-sub">
@@ -2239,6 +2245,9 @@ async function docSave(id) {
 
 function docConfirmDelete(id) {
   if (!isOnline) { showToast('Mazání je dostupné jen online.', 'error'); return; }
+  // Dialog úprav je nutné zavřít dřív — leží ve stránce až za potvrzovacím
+  // oknem a při stejném z-indexu by ho překryl. Stejně to dělá i zbytek appky.
+  docDialogClose();
   document.getElementById('confirm-overlay').style.display = 'flex';
   document.getElementById('confirm-ok-btn').onclick = () => docExecuteDelete(id);
 }
