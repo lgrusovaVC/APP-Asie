@@ -31,7 +31,7 @@ let docCatFilter = null;      // název kategorie, nebo null = vše
 
 const SECTION_TITLES = {
   dashboard: 'Přehled', flights: 'Cestování', accommodations: 'Ubytování',
-  activities: 'Místa', priprava: 'Příprava', restaurants: 'Restaurace',
+  activities: 'Aktivity', priprava: 'Příprava', restaurants: 'Restaurace',
   transport: 'Jízdní řády', budget: 'Rozpočet', calendar: 'Kalendář',
   diary: 'Deník',
 };
@@ -1206,7 +1206,7 @@ function renderActivitiesFromCache() {
     : data.filter(a => a._status === activitiesFilter);
 
   const header = pageHeader({
-    num: 4, label: 'Místa',
+    num: 4, label: 'Aktivity',
     h1: 'Důvody vstávat brzo', accentWord: 'vstávat',
     desc: 'Chrámy, výlety, příroda — vše co stojí za brzké vstávání',
     stats: [{ value: `${data.length}`, label: 'zážitků' }],
@@ -1845,7 +1845,7 @@ function renderCalendarMonth() {
     const events = calEventMap[calSelectedDay] || [];
     const d = new Date(calSelectedDay + 'T00:00:00');
     const dayLabel = `${d.getDate()}. ${MONTH_GEN} ${d.getFullYear()}`;
-    const TYPE_LABELS = { flight:'Cestování', accommodation:'Ubytování', activity:'Výlet', transport:'Doprava' };
+    const TYPE_LABELS = { flight:'Cestování', accommodation:'Ubytování', activity:'Aktivita', transport:'Doprava' };
     const body = events.length
       ? `<div class="cal-detail-events">${events.map(e => `
         <div class="cal-event-item cal-event-${e.type} cal-event-link" onclick="calEventNav('${e.type}','${calSelectedDay}','${e.id||''}')">
@@ -3672,7 +3672,7 @@ const TRASH_KINDS = [
     popis: r => `${r.from_airport || '?'} → ${r.to_airport || '?'}`, detail: r => formatDateCZ(r.date) },
   { table: 'accommodations', sekce: 'Ubytování',  ikona: 'ti-bed',
     popis: r => r.name, detail: r => `${formatDateShort(r.checkin)} – ${formatDateShort(r.checkout)}` },
-  { table: 'activities',     sekce: 'Místa',      ikona: 'ti-map-pin',
+  { table: 'activities',     sekce: 'Aktivity',   ikona: 'ti-map-pin',
     popis: r => r.name, detail: r => r.location || '' },
   { table: 'restaurants',    sekce: 'Restaurace', ikona: 'ti-tools-kitchen-2',
     popis: r => r.name, detail: r => r.cuisine_type || '' },
