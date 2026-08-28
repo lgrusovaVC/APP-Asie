@@ -811,8 +811,9 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   transition: background var(--transition);
   position: relative;
 }
+/* tužka sedí ve spodní liště vpravo, vedle navázaných dokumentů */
+.flight-footer-right { display: flex; align-items: center; justify-content: flex-end; }
 .flight-edit-btn {
-  position: absolute; bottom: 10px; right: 10px;
   background: none; border: none; cursor: pointer;
   color: var(--ink3); opacity: 0.4; padding: 4px;
   transition: opacity .15s, color .15s;
@@ -924,17 +925,15 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 /* min-width: 0 je nutné, aby se sloupec s poznámkou uměl zúžit —
    bez něj se nafoukne na celou délku textu a přeteče mimo lištu */
 .flight-footer-center { display: flex; align-items: center; justify-content: center; min-width: 0; }
-/* Poznámka má vlastní podbarvený pruh úplně dole na kartě.
-   Záporné okraje ho roztáhnou přes celou šířku obsahové části,
-   pravé odsazení uhne napevno umístěné tužce na úpravy. */
+/* Poznámka má vlastní pruh úplně dole na kartě. Záporné okraje ho roztáhnou
+   přes celou šířku obsahové části. Podklad je jen lehce šedý, aby pruh
+   nepřetahoval pozornost — proto ani béžová z palety, ta poutá víc. */
 .flight-note-row {
-  margin: 4px -24px -18px; padding: 9px 34px 9px 24px;
-  background: var(--alt); border-top: 1px solid var(--rule);
+  margin: 4px -24px -18px; padding: 9px 24px;
+  background: #f5f4f1; border-top: 1px solid #ebe8e2;
   font-family: var(--mono); font-size: 13px; font-style: italic;
-  color: var(--ink3); line-height: 1.5;
+  color: var(--ink3); line-height: 1.5; text-align: center;
 }
-/* při najetí zesvětlá celá karta na --alt, pruh proto ztmavne, ať je pořád vidět */
-.flight-card:hover .flight-note-row { background: #e8dfc8; }
 .flight-action-btns { display: flex; gap: 2px; justify-content: flex-end; }
 
 /* Dashed tear line */
@@ -1395,7 +1394,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .flight-city { font-size: 9px; }
   .flight-route-duration { font-size: 9px; }
   .flight-route-meta { font-size: 8px; }
-  .flight-note-row { margin: 4px -14px -12px; padding: 8px 32px 8px 14px; font-size: 12px; }
+  .flight-note-row { margin: 4px -14px -12px; padding: 8px 14px; font-size: 12px; }
   .flight-status-group .badge { font-size: 8px; padding: 2px 6px; }
   .flight-times { align-items: start; }
   .flight-main { padding: 12px 14px; gap: 8px; }

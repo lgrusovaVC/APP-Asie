@@ -1,5 +1,5 @@
 // Service Worker — Korea & Japonsko Trip Planner
-const CACHE_NAME = 'asie-trip-v16';
+const CACHE_NAME = 'asie-trip-v17';
 
 const STATIC_ASSETS = [
   '/',
