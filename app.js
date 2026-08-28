@@ -926,6 +926,8 @@ function parseDurationMins(s) {
 
 async function loadFlights() {
   const data = await fetchData('flights', 'date');
+  // dokumenty do cache, ať se na kartách ukážou navázané jízdenky
+  if (!IS_PUBLIC) await fetchData('documents', 'date_from');
 
   const totalMins = data.reduce((s, f) => s + parseDurationMins(f.duration), 0);
   const totalTimeStr = totalMins >= 60
@@ -1055,7 +1057,7 @@ function flightCard(f) {
           <button class="flight-notes-btn" onclick="toggleFlightNotes(this)" title="Zobrazit poznámku"><i class="ti ti-info-circle"></i></button>
           <span class="flight-footer-notes">${esc(f.notes)}</span>
         </div>` : '<div></div>'}
-        <div></div>
+        ${docChipsFor('flights', f.id) || '<div></div>'}
       </div>
     </div>
     <button class="flight-edit-btn" onclick="openEditModal('flights','${f.id}')" title="Upravit">
@@ -1936,6 +1938,59 @@ function docDateHtml(d) {
 function docIconClass(d) { return d.kind === 'pdf' ? 'ti-file-type-pdf' : 'ti-photo'; }
 function docKindLabel(d) { return d.kind === 'pdf' ? 'PDF' : 'Obrázek'; }
 
+/* ── Vazba dokumentu na konkrétní záznam ──
+   Zatím jen na cesty. Přidat ubytování nebo aktivity znamená
+   dopsat sem další položku — v databázi se nic měnit nemusí. */
+const DOC_LINK_KINDS = [
+  {
+    table: 'flights', sekce: 'Cestování',
+    popis: r => `${formatDateShort(r.date)} · ${(r.from_airport || '?').split(',')[0].trim()}`
+              + ` → ${(r.to_airport || '?').split(',')[0].trim()}`,
+    razeni: r => `${r.date}T${r.departure_time || '00:00'}`,
+  },
+];
+
+// dokumenty navázané na daný záznam (smazané tu nejsou, cache je filtrovaná)
+function docsFor(table, id) {
+  if (IS_PUBLIC || !id) return [];
+  return (getCache('documents') || []).filter(d => d.linked_table === table && d.linked_id === id);
+}
+
+// popisek záznamu, ke kterému dokument patří (prázdný, když nepatří nikam)
+function docLinkLabel(d) {
+  const kind = DOC_LINK_KINDS.find(k => k.table === d.linked_table);
+  if (!kind || !d.linked_id) return '';
+  const row = (getCache(d.linked_table) || []).find(r => r.id === d.linked_id);
+  return row ? kind.popis(row) : '';
+}
+
+function docLinkOptions(vybrano) {
+  const opts = [`<option value="">— nepřiřazeno —</option>`];
+  DOC_LINK_KINDS.forEach(k => {
+    const rows = (getCache(k.table) || []).slice()
+      .sort((a, b) => String(k.razeni(a)).localeCompare(String(k.razeni(b))));
+    if (!rows.length) return;
+    opts.push(`<optgroup label="${k.sekce}">`);
+    rows.forEach(r => {
+      const v = `${k.table}:${r.id}`;
+      opts.push(`<option value="${v}"${vybrano === v ? ' selected' : ''}>${esc(k.popis(r))}</option>`);
+    });
+    opts.push('</optgroup>');
+  });
+  return opts.join('');
+}
+
+// odkazy na dokumenty pro vykreslení na kartě záznamu
+function docChipsFor(table, id) {
+  const docs = docsFor(table, id);
+  if (!docs.length) return '';
+  return `<div class="rec-docs">${docs.map(d => `
+    <button class="rec-doc-chip" onclick="event.stopPropagation(); docOpen('${d.id}')"
+            title="${esc(d.title || 'Dokument')}">
+      <i class="ti ${docIconClass(d)}"></i><span>${esc(d.title || 'Dokument')}</span>
+    </button>`).join('')}</div>`;
+}
+
 // První den měsíce odjezdu. Slouží jako `min` datumových políček:
 // prázdné pole otevře v prohlížeči dnešek přiskřípnutý do povoleného rozsahu,
 // takže kalendář naskočí rovnou na září místo na aktuální měsíc.
@@ -2048,6 +2103,7 @@ function docRowHtml(d) {
       <div class="doc-row-title">${esc(d.title || d.filename || 'Dokument')}</div>
       <div class="doc-row-sub">
         <span class="doc-row-kind"><i class="ti ${docIconClass(d)}"></i>${docKindLabel(d)}</span>
+        ${docLinkLabel(d) ? `<span class="doc-row-link"><i class="ti ti-link"></i>${esc(docLinkLabel(d))}</span>` : ''}
         ${IS_PUBLIC ? '' : `<button class="btn-icon edit doc-row-edit" title="Upravit"
           onclick="event.stopPropagation(); docEditDialog('${d.id}')"><i class="ti ti-pencil"></i></button>`}
       </div>
@@ -2208,6 +2264,10 @@ function docEditDialog(id) {
             <div class="form-group"><label>Platí do</label>
               <input id="doc-f-to"   type="date" value="${d.date_to   || ''}" min="${docPickerMin()}"></div>
           </div>
+          <div class="form-group">
+            <label>Patří k <span class="form-hint">— ukáže se pak přímo na kartě té cesty</span></label>
+            <select id="doc-f-link">${docLinkOptions(d.linked_table && d.linked_id ? `${d.linked_table}:${d.linked_id}` : '')}</select>
+          </div>
           <p class="doc-dialog-hint">
             <i class="ti ti-info-circle"></i>
             <span>Nech obě data prázdná, pokud dokument platí pro celou cestu (třeba pojištění).
@@ -2242,12 +2302,23 @@ async function docSave(id) {
   if (to && !from) from = to;
   if (from && to && to < from) { showToast('Datum „do“ je dřív než „od“.', 'error'); return; }
 
+  const linkVal = document.getElementById('doc-f-link')?.value || '';
+  const dvoj = linkVal.indexOf(':');
+  const zaklad = { title: title || 'Dokument', category: cat, date_from: from, date_to: to };
+  const sVazbou = { ...zaklad,
+    linked_table: dvoj > 0 ? linkVal.slice(0, dvoj) : null,
+    linked_id:    dvoj > 0 ? linkVal.slice(dvoj + 1) : null };
+
   const btn = document.getElementById('doc-save-btn');
   if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin .8s linear infinite"></i> Ukládám…'; }
 
-  const { error } = await db.from('documents')
-    .update({ title: title || 'Dokument', category: cat, date_from: from, date_to: to })
-    .eq('id', id);
+  let { error } = await db.from('documents').update(sVazbou).eq('id', id);
+  // Dokud se nespustí supabase-dokumenty-vazba.sql, sloupce pro vazbu chybí —
+  // uložíme aspoň zbytek a řekneme proč, ať se změny neztratí.
+  if (error) {
+    ({ error } = await db.from('documents').update(zaklad).eq('id', id));
+    if (!error) showToast('Uloženo bez propojení — chybí spustit supabase-dokumenty-vazba.sql.', 'error');
+  }
 
   if (error) {
     showToast('Chyba při ukládání.', 'error');
