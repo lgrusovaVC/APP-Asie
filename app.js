@@ -1057,8 +1057,9 @@ function flightCard(f) {
           <button class="flight-notes-btn" onclick="toggleFlightNotes(this)" title="Zobrazit poznámku"><i class="ti ti-info-circle"></i></button>
           <span class="flight-footer-notes">${esc(f.notes)}</span>
         </div>` : '<div></div>'}
-        ${docChipsFor('flights', f.id) || '<div></div>'}
+        <div></div>
       </div>
+      ${docChipsFor('flights', f.id)}
     </div>
     <button class="flight-edit-btn" onclick="openEditModal('flights','${f.id}')" title="Upravit">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

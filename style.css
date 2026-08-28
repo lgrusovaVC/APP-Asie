@@ -921,7 +921,9 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   padding-top: 12px; border-top: 1px solid var(--rule); margin-top: auto;
 }
 .flight-status-group { display: flex; align-items: center; gap: 6px; }
-.flight-footer-center { display: flex; align-items: center; justify-content: center; }
+/* min-width: 0 je nutné, aby se sloupec s poznámkou uměl zúžit —
+   bez něj se nafoukne na celou délku textu a přeteče mimo lištu */
+.flight-footer-center { display: flex; align-items: center; justify-content: center; min-width: 0; }
 .flight-notes-btn {
   display: none; background: none; border: none; cursor: pointer;
   color: var(--ink3); padding: 2px 4px; line-height: 1;
@@ -2757,32 +2759,28 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 }
 .doc-row-link i { font-size: 13px; color: var(--acc); flex-shrink: 0; }
 
-/* navázané dokumenty na kartě záznamu (Cestování) */
+/* Navázané dokumenty mají na kartě vlastní řádek úplně dole.
+   Do spodní lišty nepatří — ta už nese stav a poznámku, a pravý dolní
+   roh navíc zabírá napevno umístěná tužka na úpravy (padding-right ji obchází). */
 .rec-docs {
-  display: flex; align-items: center; justify-content: flex-end;
-  flex-wrap: wrap; gap: 6px; justify-self: end; min-width: 0;
+  display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: 6px 20px; padding-right: 26px; min-width: 0;
 }
-/* Název se nikdy neořezává — u dvou letenek se liší až jméno na konci
-   a právě to je potřeba přečíst. Radši se odkaz zalomí na dva řádky. */
+/* Název se nikdy neořezává — u dvou jízdenek se liší až údaj na konci
+   (sedadlo, jméno) a právě to je potřeba přečíst. */
 .rec-doc-chip {
-  display: flex; align-items: flex-start; gap: 6px; max-width: 240px; min-width: 0;
-  flex: 0 0 auto;
-  padding: 5px 10px; background: var(--bg);
-  border: 1px solid var(--rule); cursor: pointer; text-align: left;
-  font-family: var(--mono); font-size: 11px; line-height: 1.35; color: var(--ink2);
-  transition: border-color var(--transition), color var(--transition);
+  display: inline-flex; align-items: baseline; gap: 6px; min-width: 0;
+  background: none; border: none; padding: 0; cursor: pointer; text-align: left;
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.45; color: var(--ink2);
+  transition: color var(--transition);
 }
-.rec-doc-chip:hover { border-color: var(--acc); color: var(--ink); }
-.rec-doc-chip i { font-size: 14px; color: var(--acc); flex-shrink: 0; margin-top: 1px; }
+.rec-doc-chip:hover { color: var(--acc); }
+.rec-doc-chip:hover span { text-decoration: underline; text-underline-offset: 2px; }
+.rec-doc-chip i { font-size: 13px; color: var(--acc); flex-shrink: 0; }
 
 @media (max-width: 768px) {
-  /* na úzké obrazovce má třetí sloupec lišty jen pár pixelů —
-     odkazy proto dostanou vlastní řádek přes celou šířku karty */
-  .rec-docs {
-    grid-column: 1 / -1; justify-self: stretch;
-    justify-content: flex-start; margin-top: 8px;
-  }
-  /* karta má vlevo fotku, takže na lištu zbývá jen kolem 190 px */
-  .rec-doc-chip { max-width: 100%; padding: 5px 8px; font-size: 10.5px; }
+  /* na mobilu je vedle fotky málo místa, odkazy proto pod sebe */
+  .rec-docs { flex-direction: column; gap: 5px; padding-right: 24px; }
+  .rec-doc-chip { font-size: 11px; }
   .doc-row-link { font-size: 9px; }
 }
