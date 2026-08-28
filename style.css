@@ -2761,8 +2761,10 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 /* ══════════════════════════════════════════════════════════════
    OFFLINE ZÁSOBA DOKUMENTŮ
    ══════════════════════════════════════════════════════════════ */
+/* Ukládání do telefonu má smysl jen na mobilu — zásoba je vždy jen
+   v tom prohlížeči, kde se stahovalo. Na počítači se lišta i značky skrývají. */
 .doc-offline-bar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  display: none; align-items: center; gap: 10px; flex-wrap: wrap;
   margin-bottom: 16px; padding: 10px 14px;
   background: #f5f4f1; border-left: 3px solid var(--acc);
 }
@@ -2780,11 +2782,11 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .doc-offline-btn i { font-size: 14px; }
 
 /* značka u položky, která je stažená */
-.doc-row-offline { display: flex; align-items: center; flex-shrink: 0; }
+.doc-row-offline { display: none; align-items: center; flex-shrink: 0; }
 .doc-row-offline i { font-size: 14px; color: #2A7A3A; }
 
 @media (max-width: 768px) {
-  .doc-offline-bar { padding: 9px 11px; gap: 8px; }
-  .doc-offline-text { font-size: 11px; min-width: 100%; }
-  .doc-offline-btn { width: 100%; justify-content: center; }
+  .doc-offline-bar { display: flex; padding: 9px 11px; gap: 8px; }
+  .doc-offline-text { font-size: 11px; min-width: 0; }
+  .doc-row-offline { display: flex; }
 }

@@ -2052,21 +2052,18 @@ function renderDocuments() {
   renderDocList();
 }
 
+// Lišta se ukazuje jen na mobilu (skrytí řeší CSS) — na počítači nemá smysl,
+// zásoba je vždycky jen v tom prohlížeči, ve kterém se stahovalo.
 function docOfflineBarHtml(all) {
   if (IS_PUBLIC || !all.length || typeof caches === 'undefined') return '';
   const hotovo = all.filter(d => docOfflineSet.has(d.url)).length;
   const vse = hotovo === all.length;
   return `<div class="doc-offline-bar${vse ? ' hotovo' : ''}">
     <i class="ti ${vse ? 'ti-device-mobile-check' : 'ti-device-mobile-down'}"></i>
-    <span class="doc-offline-text">${vse
-      ? (all.length === 1
-          ? 'Dokument máš v mobilu — otevře se i bez signálu.'
-          : `${all.length <= 4 ? 'Všechny' : 'Všech'} ${all.length} ${docWord(all.length)}`
-            + ' máš v mobilu — otevřou se i bez signálu.')
-      : `V mobilu ${hotovo} z ${all.length} — zbytek se bez signálu neotevře.`}</span>
+    <span class="doc-offline-text">Staženo ${hotovo} z ${all.length}</span>
     <button class="btn btn-ghost doc-offline-btn" id="doc-offline-btn"
             onclick="docDownloadAll()"${isOnline ? '' : ' disabled'}>
-      <i class="ti ti-download"></i> ${vse ? 'Stáhnout znovu' : 'Připravit do mobilu'}
+      <i class="ti ti-download"></i> Uložit vše do telefonu
     </button>
   </div>`;
 }

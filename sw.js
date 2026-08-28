@@ -1,5 +1,5 @@
 // Service Worker — Korea & Japonsko Trip Planner
-const CACHE_NAME = 'asie-trip-v19';
+const CACHE_NAME = 'asie-trip-v20';
 
 // Samostatná přihrádka na stažené dokumenty. Schválně NEobsahuje číslo verze
 // a úklid při aktualizaci ji vynechává — jinak by každá úprava aplikace
