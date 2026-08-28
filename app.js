@@ -1739,6 +1739,7 @@ async function loadCalendar() {
   </div>${tripFooter()}`;
 
   if (calView === 'documents') {
+    await docRefreshOffline(docs);   // co je stažené, ať to jde ukázat u položek
     const btn = document.getElementById('doc-upload-btn');
     if (btn) btn.addEventListener('click', () => document.getElementById('doc-file-input').click());
     document.getElementById('doc-file-input').addEventListener('change', docHandleFiles);
@@ -2046,8 +2047,28 @@ function renderDocuments() {
           </button>`).join('')}
       </div>
     </div>
+    ${docOfflineBarHtml(all)}
     <div id="doc-list"></div>`;
   renderDocList();
+}
+
+function docOfflineBarHtml(all) {
+  if (IS_PUBLIC || !all.length || typeof caches === 'undefined') return '';
+  const hotovo = all.filter(d => docOfflineSet.has(d.url)).length;
+  const vse = hotovo === all.length;
+  return `<div class="doc-offline-bar${vse ? ' hotovo' : ''}">
+    <i class="ti ${vse ? 'ti-device-mobile-check' : 'ti-device-mobile-down'}"></i>
+    <span class="doc-offline-text">${vse
+      ? (all.length === 1
+          ? 'Dokument máš v mobilu — otevře se i bez signálu.'
+          : `${all.length <= 4 ? 'Všechny' : 'Všech'} ${all.length} ${docWord(all.length)}`
+            + ' máš v mobilu — otevřou se i bez signálu.')
+      : `V mobilu ${hotovo} z ${all.length} — zbytek se bez signálu neotevře.`}</span>
+    <button class="btn btn-ghost doc-offline-btn" id="doc-offline-btn"
+            onclick="docDownloadAll()"${isOnline ? '' : ' disabled'}>
+      <i class="ti ti-download"></i> ${vse ? 'Stáhnout znovu' : 'Připravit do mobilu'}
+    </button>
+  </div>`;
 }
 
 function renderDocList() {
@@ -2103,6 +2124,7 @@ function docRowHtml(d) {
       <div class="doc-row-title">${esc(d.title || d.filename || 'Dokument')}</div>
       <div class="doc-row-sub">
         <span class="doc-row-kind"><i class="ti ${docIconClass(d)}"></i>${docKindLabel(d)}</span>
+        ${docOfflineSet.has(d.url) ? '<span class="doc-row-offline" title="Připraveno do mobilu"><i class="ti ti-device-mobile-check"></i></span>' : ''}
         ${docLinkLabel(d) ? `<span class="doc-row-link"><i class="ti ti-link"></i>${esc(docLinkLabel(d))}</span>` : ''}
         ${IS_PUBLIC ? '' : `<button class="btn-icon edit doc-row-edit" title="Upravit"
           onclick="event.stopPropagation(); docEditDialog('${d.id}')"><i class="ti ti-pencil"></i></button>`}
@@ -2130,12 +2152,69 @@ function docSetCat(c) {
   renderDocuments();
 }
 
+/* ── Offline zásoba dokumentů ──
+   Soubory se ukládají do vlastní přihrádky prohlížeče, kterou aktualizace
+   aplikace nemaže (viz DOCS_CACHE v sw.js). Otevírají se přes adresu uvnitř
+   aplikace, aby je service worker mohl podstrčit i bez připojení — kdyby se
+   skákalo přímo na Supabase, což je cizí web, offline by to nešlo. */
+const DOCS_CACHE = 'asie-docs';
+let docOfflineSet = new Set();   // adresy dokumentů, které jsou stažené
+
+async function docCacheOpen() {
+  try { return await caches.open(DOCS_CACHE); } catch { return null; }
+}
+
+async function docRefreshOffline(docs) {
+  docOfflineSet = new Set();
+  const cache = await docCacheOpen();
+  if (!cache) return;
+  await Promise.all((docs || []).map(async d => {
+    try { if (await cache.match(d.url)) docOfflineSet.add(d.url); } catch {}
+  }));
+}
+
+// bez funkčního service workeru (např. otevřeno ze souboru) se otevře přímo
+function docFileUrl(d) {
+  const swBezi = 'serviceWorker' in navigator && navigator.serviceWorker.controller;
+  return swBezi ? `dokument?u=${encodeURIComponent(d.url)}` : d.url;
+}
+
+async function docDownloadAll() {
+  if (!isOnline) { showToast('Stahování je dostupné jen online.', 'error'); return; }
+  const cache = await docCacheOpen();
+  if (!cache) { showToast('Tenhle prohlížeč offline zásobu neumí.', 'error'); return; }
+  // ať prohlížeč zásobu nevyhodí, když mu dojde místo
+  try { await navigator.storage?.persist?.(); } catch {}
+
+  const docs = getCache('documents') || [];
+  const btn = document.getElementById('doc-offline-btn');
+  const puvodni = btn ? btn.innerHTML : '';
+  let ok = 0, fail = 0;
+
+  for (let i = 0; i < docs.length; i++) {
+    if (btn) btn.innerHTML = `<i class="ti ti-loader-2" style="animation:spin .8s linear infinite"></i> Stahuji ${i + 1}/${docs.length}…`;
+    try {
+      const res = await fetch(docs[i].url, { cache: 'reload' });
+      if (!res.ok) throw new Error(res.status);
+      await cache.put(docs[i].url, res);
+      docOfflineSet.add(docs[i].url);
+      ok++;
+    } catch (err) { console.error('Stažení dokumentu selhalo:', err); fail++; }
+  }
+
+  if (btn) btn.innerHTML = puvodni;
+  if (ok)   showToast(ok === 1 ? 'Dokument je v mobilu.' : `Připraveno do mobilu: ${ok}.`, 'success');
+  if (fail) showToast(`Nepodařilo se stáhnout: ${fail}.`, 'error');
+  renderDocuments();
+}
+
 /* ── Otevření dokumentu ── */
 function docOpen(id) {
   const d = (getCache('documents') || []).find(x => x.id === id);
   if (!d) return;
-  if (d.kind === 'pdf') window.open(d.url, '_blank', 'noopener');
-  else docOpenImage(d.url, d.title || d.filename);
+  const src = docFileUrl(d);
+  if (d.kind === 'pdf') window.open(src, '_blank', 'noopener');
+  else docOpenImage(src, d.title || d.filename);
 }
 
 function docOpenImage(url, title) {

@@ -1,5 +1,10 @@
 // Service Worker — Korea & Japonsko Trip Planner
-const CACHE_NAME = 'asie-trip-v17';
+const CACHE_NAME = 'asie-trip-v19';
+
+// Samostatná přihrádka na stažené dokumenty. Schválně NEobsahuje číslo verze
+// a úklid při aktualizaci ji vynechává — jinak by každá úprava aplikace
+// smazala vstupenky připravené na cestu.
+const DOCS_CACHE = 'asie-docs';
 
 const STATIC_ASSETS = [
   '/',
@@ -36,15 +41,51 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate — delete old caches
+// Activate — delete old caches (přihrádku s dokumenty necháváme být)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(keys
+        .filter((k) => k !== CACHE_NAME && k !== DOCS_CACHE)
+        .map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
+
+// Otevření dokumentu z místní zásoby.
+// Aplikace neskáče přímo na Supabase (to je cizí web, kam service worker nevidí),
+// ale na tuhle adresu uvnitř aplikace. Tady soubor vytáhneme z přihrádky
+// a vrátíme ho, jako by přišel ze sítě — prohlížeč pak PDF zobrazí normálně.
+async function serveDoc(target) {
+  const chyba = (nadpis, text) => new Response(
+    `<!doctype html><html lang="cs"><head><meta charset="utf-8">
+     <meta name="viewport" content="width=device-width,initial-scale=1">
+     <title>${nadpis}</title><style>
+       body{margin:0;min-height:100dvh;display:flex;align-items:center;justify-content:center;
+            background:#faf6ee;color:#3e3830;font-family:ui-sans-serif,system-ui,sans-serif;padding:24px}
+       div{max-width:22rem;text-align:center}
+       h1{font-size:1.1rem;margin:0 0 .6rem}p{margin:0;font-size:.9rem;color:#857c70;line-height:1.6}
+     </style></head><body><div><h1>${nadpis}</h1><p>${text}</p></div></body></html>`,
+    { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+
+  if (!target) return chyba('Chybí odkaz', 'Adresa dokumentu se nepodařilo přečíst.');
+
+  const cache = await caches.open(DOCS_CACHE);
+  const ulozeny = await cache.match(target);
+  if (ulozeny) return ulozeny;
+
+  try {
+    const res = await fetch(target);
+    if (!res.ok) throw new Error(res.status);
+    cache.put(target, res.clone()).catch(() => {});
+    return res;
+  } catch {
+    return chyba('Dokument není po ruce',
+      'Nejsi připojená a tenhle dokument zatím není stažený do telefonu. ' +
+      'Až budeš online, otevři Kalendář → Dokumenty a klepni na „Připravit do mobilu“.');
+  }
+}
 
 // Fetch strategy:
 // – Supabase API calls → network only (let app.js handle localStorage fallback)
@@ -55,6 +96,13 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET and Supabase API requests
   if (event.request.method !== 'GET') return;
   if (url.includes('supabase.co/auth') || url.includes('supabase.co/rest')) return;
+
+  // Otevření dokumentu z místní zásoby (viz serveDoc výše)
+  const adresa = new URL(url);
+  if (adresa.pathname.endsWith('/dokument')) {
+    event.respondWith(serveDoc(adresa.searchParams.get('u')));
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

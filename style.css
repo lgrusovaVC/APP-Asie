@@ -2757,3 +2757,34 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .rec-doc-chip { font-size: 11px; }
   .doc-row-link { font-size: 9px; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   OFFLINE ZÁSOBA DOKUMENTŮ
+   ══════════════════════════════════════════════════════════════ */
+.doc-offline-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 16px; padding: 10px 14px;
+  background: #f5f4f1; border-left: 3px solid var(--acc);
+}
+.doc-offline-bar.hotovo { border-left-color: #2A7A3A; }
+.doc-offline-bar > i { font-size: 18px; color: var(--acc); flex-shrink: 0; }
+.doc-offline-bar.hotovo > i { color: #2A7A3A; }
+.doc-offline-text {
+  flex: 1; min-width: 160px;
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink2); line-height: 1.5;
+}
+.doc-offline-btn {
+  padding: 7px 12px; font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: .06em; text-transform: uppercase; flex-shrink: 0;
+}
+.doc-offline-btn i { font-size: 14px; }
+
+/* značka u položky, která je stažená */
+.doc-row-offline { display: flex; align-items: center; flex-shrink: 0; }
+.doc-row-offline i { font-size: 14px; color: #2A7A3A; }
+
+@media (max-width: 768px) {
+  .doc-offline-bar { padding: 9px 11px; gap: 8px; }
+  .doc-offline-text { font-size: 11px; min-width: 100%; }
+  .doc-offline-btn { width: 100%; justify-content: center; }
+}
