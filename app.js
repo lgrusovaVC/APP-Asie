@@ -1012,8 +1012,9 @@ function flightCard(f) {
   };
   const photo = photoMap[f.country] || photoMap['Letadlo'];
   const routeIcon = iconMap[f.country] || 'ti-plane';
+  // rezervaci pozná černé podbarvení a číslo — slovo „Rezervováno“ je zbytečné
   const statusBadge = f.booking_ref
-    ? `<span class="badge badge-booked">Rezervováno · ${esc(f.booking_ref)}</span>`
+    ? `<span class="badge badge-booked">${esc(f.booking_ref)}</span>`
     : `<span class="badge badge-planned">Naplánováno</span>`;
 
   const arrDate = formatDateCZ(f.arrival_date || f.date);
@@ -1053,13 +1054,10 @@ function flightCard(f) {
       </div>
       <div class="flight-main-footer">
         <div class="flight-status-group">${statusBadge}</div>
-        ${f.notes ? `<div class="flight-footer-center">
-          <button class="flight-notes-btn" onclick="toggleFlightNotes(this)" title="Zobrazit poznámku"><i class="ti ti-info-circle"></i></button>
-          <span class="flight-footer-notes">${esc(f.notes)}</span>
-        </div>` : '<div></div>'}
+        <div class="flight-footer-center">${docChipsFor('flights', f.id)}</div>
         <div></div>
       </div>
-      ${docChipsFor('flights', f.id)}
+      ${f.notes ? `<div class="flight-note-row">${esc(f.notes)}</div>` : ''}
     </div>
     <button class="flight-edit-btn" onclick="openEditModal('flights','${f.id}')" title="Upravit">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -3912,22 +3910,6 @@ function togglePastFlights(row) {
   const list = row.nextElementSibling;
   list.hidden = !list.hidden;
   row.querySelector('.flights-past-chevron').classList.toggle('rotated', !list.hidden);
-}
-
-function toggleFlightNotes(btn) {
-  const text = btn.nextElementSibling.textContent;
-  const overlay = document.createElement('div');
-  overlay.className = 'note-modal-overlay';
-  overlay.innerHTML = `
-    <div class="note-modal">
-      <div class="note-modal-header">
-        <span>Poznámka</span>
-        <button class="note-modal-close-btn" onclick="this.closest('.note-modal-overlay').remove()"><i class="ti ti-x"></i></button>
-      </div>
-      <div class="note-modal-body">${esc(text)}</div>
-    </div>`;
-  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-  document.body.appendChild(overlay);
 }
 
 function formatDateShort(iso) {

@@ -924,15 +924,17 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 /* min-width: 0 je nutné, aby se sloupec s poznámkou uměl zúžit —
    bez něj se nafoukne na celou délku textu a přeteče mimo lištu */
 .flight-footer-center { display: flex; align-items: center; justify-content: center; min-width: 0; }
-.flight-notes-btn {
-  display: none; background: none; border: none; cursor: pointer;
-  color: var(--ink3); padding: 2px 4px; line-height: 1;
-}
-.flight-notes-btn:hover { color: var(--ink); }
-.flight-footer-notes {
+/* Poznámka má vlastní podbarvený pruh úplně dole na kartě.
+   Záporné okraje ho roztáhnou přes celou šířku obsahové části,
+   pravé odsazení uhne napevno umístěné tužce na úpravy. */
+.flight-note-row {
+  margin: 4px -24px -18px; padding: 9px 34px 9px 24px;
+  background: var(--alt); border-top: 1px solid var(--rule);
   font-family: var(--mono); font-size: 13px; font-style: italic;
-  color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--ink3); line-height: 1.5;
 }
+/* při najetí zesvětlá celá karta na --alt, pruh proto ztmavne, ať je pořád vidět */
+.flight-card:hover .flight-note-row { background: #e8dfc8; }
 .flight-action-btns { display: flex; gap: 2px; justify-content: flex-end; }
 
 /* Dashed tear line */
@@ -1251,30 +1253,6 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   position: sticky; bottom: 0; background: var(--bg);
 }
 .modal-footer-right { display: flex; gap: 10px; }
-.note-modal-overlay {
-  position: fixed; inset: 0; z-index: 1100;
-  background: rgba(20,16,12,.55); display: flex; align-items: flex-end;
-}
-.note-modal {
-  width: 100%; background: var(--bg); border-top: 1px solid var(--rule);
-  padding: 0 0 env(safe-area-inset-bottom);
-}
-.note-modal-header {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 20px 12px;
-  border-bottom: 1px solid var(--rule);
-  font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink3);
-}
-.note-modal-close-btn {
-  background: none; border: none; cursor: pointer; color: var(--ink3);
-  padding: 2px; line-height: 1; font-size: 1rem;
-}
-.note-modal-body {
-  padding: 16px 20px 24px;
-  font-family: var(--mono); font-size: 13px; font-style: italic;
-  color: var(--ink2); line-height: 1.6;
-}
-
 .confirm-modal { text-align: center; padding: 32px 28px; max-width: 340px; }
 .confirm-icon  { font-size: 2rem; color: var(--acc); margin-bottom: 12px; }
 .confirm-modal h3 { font-family: var(--serif); font-size: 1.15rem; font-weight: 400; margin-bottom: 8px; }
@@ -1417,8 +1395,7 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .flight-city { font-size: 9px; }
   .flight-route-duration { font-size: 9px; }
   .flight-route-meta { font-size: 8px; }
-  .flight-footer-notes { display: none; }
-  .flight-notes-btn { display: inline-flex; align-items: center; font-size: 1rem; }
+  .flight-note-row { margin: 4px -14px -12px; padding: 8px 32px 8px 14px; font-size: 12px; }
   .flight-status-group .badge { font-size: 8px; padding: 2px 6px; }
   .flight-times { align-items: start; }
   .flight-main { padding: 12px 14px; gap: 8px; }
@@ -2759,12 +2736,11 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 }
 .doc-row-link i { font-size: 13px; color: var(--acc); flex-shrink: 0; }
 
-/* Navázané dokumenty mají na kartě vlastní řádek úplně dole.
-   Do spodní lišty nepatří — ta už nese stav a poznámku, a pravý dolní
-   roh navíc zabírá napevno umístěná tužka na úpravy (padding-right ji obchází). */
+/* Navázané dokumenty sedí uprostřed spodní lišty; při více jich jde
+   jeden pod druhý, ať se dlouhé názvy nemusí ořezávat. */
 .rec-docs {
-  display: flex; align-items: baseline; flex-wrap: wrap;
-  gap: 6px 20px; padding-right: 26px; min-width: 0;
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 3px; min-width: 0;
 }
 /* Název se nikdy neořezává — u dvou jízdenek se liší až údaj na konci
    (sedadlo, jméno) a právě to je potřeba přečíst. */
@@ -2779,8 +2755,6 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 .rec-doc-chip i { font-size: 13px; color: var(--acc); flex-shrink: 0; }
 
 @media (max-width: 768px) {
-  /* na mobilu je vedle fotky málo místa, odkazy proto pod sebe */
-  .rec-docs { flex-direction: column; gap: 5px; padding-right: 24px; }
   .rec-doc-chip { font-size: 11px; }
   .doc-row-link { font-size: 9px; }
 }
