@@ -2779,23 +2779,20 @@ function diaryInitMap() {
   diaryMap.setView([36.2, 131.5], 5);
   // Mapové dlaždice od Esri. CARTO od srpna 2026 do dlaždic vypaluje nápis
   // „API key required“, Esri žádný klíč nechce — není tedy co vypršet.
-  // Podklad je bez popisků, popisky jsou samostatná vrstva nad ním a jsou
-  // v latince (OpenStreetMap by je měl korejsky a japonsky).
+  //
+  // World_Street_Map (a ne světle šedá Canvas) proto, že jako jediná popisuje
+  // i městské čtvrti, a to dvojjazyčně: korejsky/japonsky a pod tím latinkou.
+  // Je barevnější, než se k appce hodí, proto ji přes CSS trochu odbarvujeme
+  // (třída diary-tiles) — popisky zůstanou čitelné, barvy ustoupí.
   //
   // maxNativeZoom: 13 — v Koreji Esri hlubší detail nemá (tamní zákon omezuje
   // vývoz podrobných mapových dat). Leaflet proto bližší přiblížení dopočítá
   // z třináctky místo toho, aby ukázal prázdnou dlaždici s hláškou.
-  const dlazdice = { maxNativeZoom: 13, maxZoom: 15 };
-  const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas';
-
-  L.tileLayer(`${esri}/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}`, {
-    ...dlazdice,
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    className: 'diary-tiles',
+    maxNativeZoom: 13, maxZoom: 15,
     attribution: 'Podklad &copy; <a href="https://www.esri.com">Esri</a> · &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(diaryMap);
-
-  // popisky se přidávají až po podkladu, aby ležely nad ním
-  L.tileLayer(`${esri}/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}`, dlazdice)
-    .addTo(diaryMap);
 }
 
 function diaryRenderAll() {

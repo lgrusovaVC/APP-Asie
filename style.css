@@ -2790,3 +2790,8 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   .doc-offline-text { font-size: 11px; min-width: 0; }
   .doc-row-offline { display: flex; }
 }
+
+/* Mapové dlaždice v Deníku — Esri street mapa je barevnější, než se k appce
+   hodí. Odbarvíme ji, ať vyniknou červené špendlíky s fotkami a trasa.
+   Filtr sedí jen na dlaždicích, špendlíků ani popisků se netýká. */
+.diary-tiles { filter: saturate(.5) contrast(.96) brightness(1.03); }
