@@ -2763,6 +2763,11 @@ function diaryToggleDay(iso) {
   diaryRenderAll();
 }
 
+// Výchozí výřez mapy Deníku — celá cesta od Žlutého moře po Sendai.
+// Zadané rohy (a ne střed + přiblížení) proto, že se pak stejný výsek
+// ukáže na širokém monitoru i na mobilu; přiblížení si Leaflet dopočítá.
+const DIARY_HOME = [[33.0, 125.5], [38.5, 141.0]];
+
 function diaryInitMap() {
   if (diaryMap) { try { diaryMap.remove(); } catch {} diaryMap = null; }
   diaryCluster = null;
@@ -2776,7 +2781,7 @@ function diaryInitMap() {
     document.getElementById('diary-map')?.classList.remove('moving');
     diarySetPosition(id, e.latlng.lat, e.latlng.lng);
   });
-  diaryMap.setView([36.2, 131.5], 5);
+  diaryMap.fitBounds(DIARY_HOME, { padding: [8, 8] });
   // Mapové dlaždice od Esri. CARTO od srpna 2026 do dlaždic vypaluje nápis
   // „API key required“, Esri žádný klíč nechce — není tedy co vypršet.
   //
@@ -2829,9 +2834,11 @@ function diaryRenderMarkers(list) {
       color: '#cf3a2a', weight: 2, opacity: .55, dashArray: '6 6', interactive: false,
     }).addTo(diaryMap);
   }
-  if (withPos.length) {
+  // Bez filtru zůstává výchozí pohled na celou cestu (nastavuje ho diaryInitMap).
+  // Přiblížíme se, teprve když si vybereš konkrétní den nebo místo.
+  if (withPos.length && (diaryPlaceFilter || diaryDayFilter)) {
     const bounds = L.latLngBounds(withPos.map(p => [p.lat, p.lng]));
-    diaryMap.fitBounds(bounds.pad(0.2), { maxZoom: (diaryPlaceFilter || diaryDayFilter) ? 13 : 12 });
+    diaryMap.fitBounds(bounds.pad(0.2), { maxZoom: 13 });
   }
 }
 
