@@ -2795,3 +2795,9 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
    hodí. Odbarvíme ji, ať vyniknou červené špendlíky s fotkami a trasa.
    Filtr sedí jen na dlaždicích, špendlíků ani popisků se netýká. */
 .diary-tiles { filter: saturate(.5) contrast(.96) brightness(1.03); }
+
+/* Na mobilu se přibližuje přirozeně dvěma prsty (a dvojklepnutím),
+   tlačítka + a − by na malé mapě jen zabírala místo. */
+@media (max-width: 768px) {
+  #diary-map .leaflet-control-zoom { display: none; }
+}
