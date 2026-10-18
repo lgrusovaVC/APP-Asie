@@ -441,8 +441,19 @@ async function loadDashboard() {
 
   // Days badge
   const daysSign = daysLeft >= 0 ? `-${daysLeft}` : `+${Math.abs(daysLeft)}`;
-  const dayStatVal   = daysLeft > 0 ? daysLeft : Math.abs(daysLeft) + 1;
-  const dayStatLabel = daysLeft > 0 ? 'Dní do odjezdu' : 'Den pobytu';
+
+  // Počítadlo dole pod mottem má tři fáze: před odjezdem odpočítává dny,
+  // během cesty ukazuje kolikátý je den pobytu a po návratu se přepne
+  // na dny od návratu — jinak by „den pobytu“ rostl donekonečna.
+  const daysSince = Math.ceil((today - returnDate) / 86400000);
+  const poNavratu = daysSince > 0;
+  const dayStatVal   = daysLeft > 0 ? daysLeft
+                     : poNavratu   ? daysSince
+                     : Math.abs(daysLeft) + 1;
+  const dayStatLabel = daysLeft > 0 ? 'Dní do odjezdu'
+                     : poNavratu
+                       ? `${daysSince === 1 ? 'Den' : daysSince <= 4 ? 'Dny' : 'Dní'} od návratu`
+                       : 'Den pobytu';
 
   // Prep bars with sub-notes
   const bookedFlights = flights.filter(f => f.booking_ref && f.booking_ref.trim()).length;
