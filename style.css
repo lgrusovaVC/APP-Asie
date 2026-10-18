@@ -262,6 +262,10 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
   grid-column: 2;
   min-height: 100dvh;
   background: var(--bg);
+  /* Bez min-width: 0 se sloupec v mřížce odmítá zúžit pod šířku obsahu.
+     Dlouhé vodorovné pruhy (karty dnů a míst v Deníku, pásy náhledů)
+     by pak roztáhly celou stránku místo toho, aby se posouvaly samy v sobě. */
+  min-width: 0;
 }
 .section { display: none; }
 .section.active { display: block; }
