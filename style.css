@@ -2805,3 +2805,12 @@ input, select, textarea, button { font-family: inherit; font-size: inherit; }
 @media (max-width: 768px) {
   #diary-map .leaflet-control-zoom { display: none; }
 }
+
+/* políčko pro opravu data pořízení v prohlížeči fotky */
+.diary-lb-when-input {
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.25);
+  color: #fff; font-family: var(--mono); font-size: 12px;
+  padding: 3px 7px; outline: none;
+}
+.diary-lb-when-input:focus { border-color: var(--sb-accent); }
+.diary-lb-when-input::-webkit-calendar-picker-indicator { filter: invert(1); opacity: .6; cursor: pointer; }

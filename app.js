@@ -2685,7 +2685,27 @@ let diaryMovingId = null;     // id fotky, která se přemisťuje klepnutím do 
 let diaryLbList = [];
 let diaryLbIdx = 0;
 
-function diaryDayIso(p)  { return (p.taken_at || p.created_at || '').slice(0, 10); }
+// Den, pod který fotka patří. Čte se z uloženého času převedeného na místní
+// čas — stejně, jako se datum ukazuje v prohlížeči fotky. Dřív se tu jen
+// uřízlo prvních deset znaků, což je datum v Greenwichi, takže fotka pořízená
+// pozdě večer visela pod předchozím dnem, než jaký na ní svítil.
+function diaryDayIso(p) {
+  const raw = p.taken_at || p.created_at;
+  if (!raw) return '';
+  const d = new Date(raw);
+  if (isNaN(d)) return String(raw).slice(0, 10);
+  const dvoj = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${dvoj(d.getMonth() + 1)}-${dvoj(d.getDate())}`;
+}
+
+// čas pro políčko typu datum+čas (očekává místní čas bez značky pásma)
+function diaryWhenInput(iso) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || isNaN(d)) return '';
+  const dvoj = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${dvoj(d.getMonth() + 1)}-${dvoj(d.getDate())}`
+       + `T${dvoj(d.getHours())}:${dvoj(d.getMinutes())}`;
+}
 function diaryPlaceOf(p) {
   if (p.lat == null || p.lng == null) return null;
   return p.place || 'Jinde';
@@ -3005,7 +3025,14 @@ function diaryLbRender() {
       <button class="diary-lb-nav next${diaryLbIdx === diaryLbList.length - 1 ? ' off' : ''}" onclick="diaryLbNav(1)"><i class="ti ti-chevron-right"></i></button>
     </div>
     <div class="diary-lb-meta">
-      <div class="diary-lb-when"><i class="ti ti-clock"></i> ${when}</div>
+      <div class="diary-lb-when">
+        <i class="ti ti-clock"></i>
+        ${online
+          ? `<input type="datetime-local" id="diary-lb-when-input" class="diary-lb-when-input"
+                    value="${diaryWhenInput(p.taken_at)}" title="Kdy byla fotka pořízená"
+                    onchange="diaryLbSaveWhen('${p.id}')">`
+          : `<span>${when}</span>`}
+      </div>
       <div class="diary-lb-fields">
         <input id="diary-lb-place" placeholder="Místo…" value="${esc(p.place || '')}"
                ${online ? '' : 'disabled'} onchange="diaryLbSavePlace('${p.id}')">
@@ -3048,6 +3075,23 @@ function diaryLbKey(e) {
   if (e.key === 'Escape')     diaryLbClose();
   if (e.key === 'ArrowLeft')  diaryLbNav(-1);
   if (e.key === 'ArrowRight') diaryLbNav(1);
+}
+
+// Oprava data pořízení. Hodí se, když fotka nemá v sobě čas z fotoaparátu —
+// pak se při nahrání vezme čas souboru, který bývá úplně mimo.
+async function diaryLbSaveWhen(id) {
+  const inp = document.getElementById('diary-lb-when-input');
+  if (!inp) return;
+  let iso = null;
+  if (inp.value) {
+    const d = new Date(inp.value);        // políčko dává místní čas
+    if (isNaN(d)) { showToast('Tohle datum se nepodařilo přečíst.', 'error'); return; }
+    iso = d.toISOString();
+  }
+  if (!await diaryUpdate(id, { taken_at: iso })) return;
+  diaryLbList = diaryLbList.map(x => x.id === id ? { ...x, taken_at: iso } : x);
+  showToast(iso ? 'Datum fotky upraveno.' : 'Datum fotky smazáno.', 'success');
+  await loadDiary();                      // přeskupí dny, místa i statistiky
 }
 
 async function diaryLbSavePlace(id) {
@@ -3453,8 +3497,14 @@ const WX_STOPS = [
   { from: '2026-09-20', to: '2026-09-27', city: 'Tokyo',     lat: 35.6762, lng: 139.6503 },
 ];
 
+// Soul — po návratu je zajímavější vidět počasí tam než doma za oknem
+const WX_PO_NAVRATU = { city: 'Seoul', lat: 37.5665, lng: 126.9780 };
+const WX_KONEC_CESTY = WX_STOPS[WX_STOPS.length - 1].to;
+
 function wxStopFor(iso) {
-  return WX_STOPS.find(s => iso >= s.from && iso < s.to) || WX_PRAHA;
+  const stop = WX_STOPS.find(s => iso >= s.from && iso < s.to);
+  if (stop) return stop;
+  return iso >= WX_KONEC_CESTY ? WX_PO_NAVRATU : WX_PRAHA;
 }
 
 // WMO weather code → slovní popis
@@ -3705,6 +3755,9 @@ function wxWhenDay(off) {
 
 async function wxCheckAlerts(forceStop) {
   if (IS_PUBLIC || !isOnline) return false;
+  // Po návratu ukazuje předpověď Soul, ale varovat doma před tamním
+  // zemětřesením nebo tajfunem nedává smysl — výstrahy platí jen na cestě.
+  if (!forceStop && todayISO() >= WX_KONEC_CESTY) return false;
   if (!forceStop) {
     try {
       const last = parseInt(sessionStorage.getItem('wx_alerts_ts') || '0');
